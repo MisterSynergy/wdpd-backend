@@ -1,4 +1,7 @@
+from os import mkdir
+from os.path import isdir, expanduser, join
 from time import strftime, time
+
 import pandas as pd
 
 import patrolquery
@@ -13,7 +16,7 @@ def df_info(dataframe:pd.DataFrame) -> None:
 
 
 def dump_update_timestamp(timestmp:float) -> None:
-    update_file = '/data/project/wdpd/data/update.txt'
+    update_file = f'{expanduser("~")}/data/update.txt'
     with open(update_file, mode='w', encoding='utf8') as file_handle:
         file_handle.write(str(round(timestmp)))
 
@@ -55,12 +58,25 @@ def get_actions() -> dict[str, list[str]]:
     return actions
 
 
+def setup_directories() -> None:
+    required_directories = [
+        f'{expanduser("~")}/data',
+        f'{expanduser("~")}/plots'
+    ]
+
+    for required_directory in required_directories:
+        if isdir(required_directory):
+            continue
+        mkdir(join(expanduser('~'), required_directory))
+
+
 def main() -> None:
     #### Aux variables
     start_timestamp = time()
     print(f'Script last executed: {strftime("%Y-%m-%d, %H:%M:%S (%Z)")}')
     debugging = False # True: prints some dataframe information
     actions=get_actions()
+    setup_directories()
 
     #### Query data
     change_tags = patrolquery.query_change_tags()
@@ -92,7 +108,7 @@ def main() -> None:
         'filter_window' : filter_window,
         'xticks_window' : xticks_window,
         'xticklabels_window' : xticklabels_window,
-        'plot_path' : '/data/project/wdpd/plots/',
+        'plot_path' : f'{expanduser("~")}/plots/',
         'figsize_standard' : (6, 4),
         'figsize_tall' : (6, 8),
         'figsize_wide' : (9, 4),
