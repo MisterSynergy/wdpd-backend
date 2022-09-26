@@ -439,7 +439,7 @@ def amend_change_tags(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataFrame
 def amend_edit_summaries(unpatrolled_changes:pd.DataFrame, actions:dict[str, list[str]]) -> pd.DataFrame:
     unpatrolled_changes = unpatrolled_changes.merge(
         right=unpatrolled_changes['comment_text'].str.extract(
-            pat=r'^\/\* ((?<!\*\/).+) \*\/ ?(.*)?',
+            pat=r'^\/\* ((?<!\*\/).+?) \*\/ ?(.*)?',
             expand=True
         ),
         how='left',
