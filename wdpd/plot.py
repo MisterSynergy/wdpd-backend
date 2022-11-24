@@ -4,12 +4,12 @@ from math import ceil as m_ceil
 from os import remove
 from typing import Optional, TypedDict
 
-import matplotlib.pyplot as plt
-import pandas as pd
-import requests
 from matplotlib import cm
 from matplotlib.colors import LogNorm
+import matplotlib.pyplot as plt
 from numpy import array as np_array, amax
+import pandas as pd
+import requests
 
 
 WDQS_ENDPOINT:str = 'https://query.wikidata.org/sparql'

@@ -1,9 +1,10 @@
-from os import remove
 from glob import glob
 from io import StringIO
-import requests
+from os import remove
+
 from numpy import mean
 import pandas as pd
+import requests
 
 
 DATAPATH = '/data/project/wdpd/data/'

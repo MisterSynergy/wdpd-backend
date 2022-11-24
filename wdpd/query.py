@@ -1,8 +1,9 @@
 from os.path import expanduser
 from json import JSONDecodeError
-import requests
+
 from mysql.connector import MySQLConnection
 import pandas as pd
+import requests
 
 
 WIKIDATA_API_ENDPOINT = 'https://www.wikidata.org/w/api.php'
