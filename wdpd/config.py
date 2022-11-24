@@ -14,5 +14,5 @@ DATAPATH:str = '/data/project/wdpd/data/'
 REPLICA_PARAMS:dict[str, str] = {
     'host' : 'wikidatawiki.analytics.db.svc.wikimedia.cloud',
     'database' : 'wikidatawiki_p',
-    'option_files' : f'{expanduser("~")}/replica.my.cnf'
+    'default_file' : f'{expanduser("~")}/replica.my.cnf'
 }

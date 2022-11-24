@@ -1,6 +1,7 @@
 from json import JSONDecodeError
+from typing import Any
 
-from mysql.connector import MySQLConnection
+import mariadb
 import pandas as pd
 import requests
 
@@ -10,8 +11,8 @@ from .config import WIKIDATA_API_ENDPOINT, USER_AGENT, WDCM_TOPLIST_URL, REPLICA
 #### internal functions
 class Replica:
     def __init__(self):
-        self.replica = MySQLConnection(**REPLICA_PARAMS)
-        self.cursor = self.replica.cursor()
+        self.replica = mariadb.connect(**REPLICA_PARAMS)
+        self.cursor = self.replica.cursor(dictionary=True)
 
 
     def __enter__(self):
@@ -23,7 +24,7 @@ class Replica:
         self.replica.close()
 
 
-def query_mediawiki(query:str) -> list[tuple]:
+def query_mediawiki(query:str) -> list[dict[str, Any]]:
     with Replica() as cursor:
         cursor.execute(query)
         result = cursor.fetchall()
@@ -49,9 +50,47 @@ WHERE
   AND oresm_is_current=1"""
 
     query_result = query_mediawiki(sql)
-    ores_model_ids = [ int(row[0]) for row in query_result ]
+    ores_model_ids = [ int(row['oresm_id']) for row in query_result ]
 
     return ores_model_ids
+
+
+def query_translation_pages() -> list[str]:
+    sql = """SELECT
+      page_title
+    FROM
+      revtag
+        JOIN page ON rt_page=page_id
+        JOIN recentchanges ON rc_this_oldid=rt_revision
+    WHERE
+      rc_patrolled=0
+      AND page_namespace=1198"""
+    query_result = query_mediawiki(sql)
+
+    translation_pages = pd.DataFrame(
+        data={
+            'page_title' : [ row['page_title'].decode('utf8') for row in query_result ]
+        },
+        columns=[
+            'page_title'
+        ]
+    )
+
+    translation_pages['translatable_page'] = translation_pages['page_title'].apply(
+        func=lambda x : '/'.join(x.split('/')[:-2])
+    )
+    translation_pages['section'] = translation_pages['page_title'].apply(
+        func=lambda x : x.split('/')[-2]
+    )
+    translation_pages['lang'] = translation_pages['page_title'].apply(
+        func=lambda x : x.split('/')[-1]
+    )
+    translation_pages['translation_page'] = translation_pages[['translatable_page', 'lang']].apply(
+        axis=1,
+        func=lambda x : f'{x.translatable_page}/{x.lang}'
+    )
+
+    return translation_pages['translation_page'].unique().tolist()
 
 
 #### export functions
@@ -90,17 +129,17 @@ def query_unpatrolled_changes() -> pd.DataFrame:
 
     unpatrolled_changes = pd.DataFrame(
         data={
-            'rc_id' : [ int(row[0]) for row in query_result ],
-            'rc_timestamp' : [ int(row[1]) for row in query_result ],
-            'rc_title' : [ row[2].decode('utf8') for row in query_result ],
-            'rc_source' : [ row[3].decode('utf8') for row in query_result ],
-            'rc_patrolled' : [ int(row[4]) for row in query_result ],
-            'rc_new_len' : [ int(row[5]) for row in query_result ],
-            'rc_old_len' : [ int(row[6]) for row in query_result ],
-            'rc_this_oldid' : [ int(row[7]) for row in query_result ],
-            'actor_user' : [ row[8] for row in query_result ],
-            'actor_name' : [ row[9].decode('utf8') for row in query_result ],
-            'comment_text' : [ row[10].decode('utf8') for row in query_result ],
+            'rc_id' : [ int(row['rc_id']) for row in query_result ],
+            'rc_timestamp' : [ int(row['rc_timestamp']) for row in query_result ],
+            'rc_title' : [ row['rc_title'].decode('utf8') for row in query_result ],
+            'rc_source' : [ row['rc_source'].decode('utf8') for row in query_result ],
+            'rc_patrolled' : [ int(row['rc_patrolled']) for row in query_result ],
+            'rc_new_len' : [ int(row['rc_new_len']) for row in query_result ],
+            'rc_old_len' : [ int(row['rc_old_len']) for row in query_result ],
+            'rc_this_oldid' : [ int(row['rc_this_oldid']) for row in query_result ],
+            'actor_user' : [ row['actor_user'] for row in query_result ],
+            'actor_name' : [ row['actor_name'].decode('utf8') for row in query_result ],
+            'comment_text' : [ row['comment_text'].decode('utf8') for row in query_result ],
         },
         columns=[
             'rc_id',
@@ -158,9 +197,9 @@ def query_change_tags() -> pd.DataFrame:
 
     change_tags = pd.DataFrame(
         data={
-            'rc_id' : [ int(row[0]) for row in query_result ],
-            'ct_id' : [ int(row[1]) for row in query_result ],
-            'ctd_name' : [ row[2].decode('utf8') for row in query_result ]
+            'rc_id' : [ int(row['rc_id']) for row in query_result ],
+            'ct_id' : [ int(row['ct_id']) for row in query_result ],
+            'ctd_name' : [ row['ctd_name'].decode('utf8') for row in query_result ]
         },
         columns=[
             'rc_id',
@@ -192,10 +231,10 @@ def query_top_patrollers(min_timestamp:int) -> pd.DataFrame:
 
     top_patrollers = pd.DataFrame(
         data={
-            'log_id' : [ int(row[0]) for row in query_result ],
-            'log_timestamp' : [ int(row[1]) for row in query_result ],
-            'log_params' : [ row[2].decode('utf8') for row in query_result ],
-            'actor_name' : [ row[3].decode('utf8') for row in query_result ]
+            'log_id' : [ int(row['log_id']) for row in query_result ],
+            'log_timestamp' : [ int(row['log_timestamp']) for row in query_result ],
+            'log_params' : [ row['log_params'].decode('utf8') for row in query_result ],
+            'actor_name' : [ row['actor_name'].decode('utf8') for row in query_result ]
         },
         columns=[
             'log_id',
@@ -243,11 +282,11 @@ def query_ores_scores() -> pd.DataFrame:
 
     ores_scores = pd.DataFrame(
         data={
-            'oresc_rev' : [ int(row[0]) for row in query_result ],
-            'oresc_model' : [ int(row[1]) for row in query_result ],
-            'oresc_class' : [ int(row[2]) for row in query_result ],
-            'oresc_probability' : [ float(row[3]) for row in query_result ],
-            'oresc_is_predicted' : [ int(row[4]) for row in query_result ]
+            'oresc_rev' : [ int(row['oresc_rev']) for row in query_result ],
+            'oresc_model' : [ int(row['oresc_model']) for row in query_result ],
+            'oresc_class' : [ int(row['oresc_class']) for row in query_result ],
+            'oresc_probability' : [ float(row['oresc_probability']) for row in query_result ],
+            'oresc_is_predicted' : [ int(row['oresc_is_predicted']) for row in query_result ]
         },
         columns=[
             'oresc_rev',
@@ -265,6 +304,7 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
     sql = """SELECT
       rc_id,
       rc_timestamp,
+      rc_namespace,
       rc_title,
       rc_source,
       rc_patrolled,
@@ -273,8 +313,7 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
       rc_this_oldid,
       actor_user,
       actor_name,
-      comment_text,
-      rc_namespace
+      comment_text
     FROM
       recentchanges
         JOIN actor_recentchanges ON rc_actor=actor_id
@@ -286,18 +325,18 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
 
     unpatrolled_changes = pd.DataFrame(
         data={
-            'rc_id' : [ int(row[0]) for row in query_result ],
-            'rc_timestamp' : [ int(row[1]) for row in query_result ],
-            'rc_namespace' : [ int(row[11]) for row in query_result ],
-            'rc_title' : [ row[2].decode('utf8') for row in query_result ],
-            'rc_source' : [ row[3].decode('utf8') for row in query_result ],
-            'rc_patrolled' : [ int(row[4]) for row in query_result ],
-            'rc_new_len' : [ int(row[5]) for row in query_result ],
-            'rc_old_len' : [ int(row[6]) for row in query_result ],
-            'rc_this_oldid' : [ int(row[7]) for row in query_result ],
-            'actor_user' : [ row[8] for row in query_result ],
-            'actor_name' : [ row[9].decode('utf8') for row in query_result ],
-            'comment_text' : [ row[10].decode('utf8') for row in query_result ],
+            'rc_id' : [ int(row['rc_id']) for row in query_result ],
+            'rc_timestamp' : [ int(row['rc_timestamp']) for row in query_result ],
+            'rc_namespace' : [ int(row['rc_namespace']) for row in query_result ],
+            'rc_title' : [ row['rc_title'].decode('utf8') for row in query_result ],
+            'rc_source' : [ row['rc_source'].decode('utf8') for row in query_result ],
+            'rc_patrolled' : [ int(row['rc_patrolled']) for row in query_result ],
+            'rc_new_len' : [ int(row['rc_new_len']) for row in query_result ],
+            'rc_old_len' : [ int(row['rc_old_len']) for row in query_result ],
+            'rc_this_oldid' : [ int(row['rc_this_oldid']) for row in query_result ],
+            'actor_user' : [ row['actor_user'] for row in query_result ],
+            'actor_name' : [ row['actor_name'].decode('utf8') for row in query_result ],
+            'comment_text' : [ row['comment_text'].decode('utf8') for row in query_result ],
         },
         columns=[
             'rc_id',
@@ -562,40 +601,3 @@ def compile_patrol_progress(unpatrolled_changes:pd.DataFrame, \
 
     return patrol_progress
 
-
-def query_translation_pages() -> list[str]:
-    sql = """SELECT
-      page_title
-    FROM
-      revtag
-        JOIN page ON rt_page=page_id
-        JOIN recentchanges ON rc_this_oldid=rt_revision
-    WHERE
-      rc_patrolled=0
-      AND page_namespace=1198"""
-    query_result = query_mediawiki(sql)
-
-    translation_pages = pd.DataFrame(
-        data={
-            'page_title' : [ row[0].decode('utf8') for row in query_result ]
-        },
-        columns=[
-            'page_title'
-        ]
-    )
-
-    translation_pages['translatable_page'] = translation_pages['page_title'].apply(
-        func=lambda x : '/'.join(x.split('/')[:-2])
-    )
-    translation_pages['section'] = translation_pages['page_title'].apply(
-        func=lambda x : x.split('/')[-2]
-    )
-    translation_pages['lang'] = translation_pages['page_title'].apply(
-        func=lambda x : x.split('/')[-1]
-    )
-    translation_pages['translation_page'] = translation_pages[['translatable_page', 'lang']].apply(
-        axis=1,
-        func=lambda x : f'{x.translatable_page}/{x.lang}'
-    )
-
-    return translation_pages['translation_page'].unique().tolist()
