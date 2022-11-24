@@ -1,22 +1,10 @@
-from os.path import expanduser
 from json import JSONDecodeError
 
 from mysql.connector import MySQLConnection
 import pandas as pd
 import requests
 
-
-WIKIDATA_API_ENDPOINT = 'https://www.wikidata.org/w/api.php'
-USER_AGENT = f'{requests.utils.default_headers()["User-Agent"]} (Wikidata bot' \
-              ' by User:MisterSynergy; mailto:mister.synergy@yahoo.com)'
-WDCM_TOPLIST_URL = 'https://analytics.wikimedia.org/published/datasets/wmde-analytics-' \
-    'engineering/wdcm/etl/wdcm_topItems.csv'
-
-REPLICA_PARAMS = {
-    'host' : 'wikidatawiki.analytics.db.svc.wikimedia.cloud',
-    'database' : 'wikidatawiki_p',
-    'option_files' : f'{expanduser("~")}/replica.my.cnf'
-}
+from .config import WIKIDATA_API_ENDPOINT, USER_AGENT, WDCM_TOPLIST_URL, REPLICA_PARAMS
 
 
 #### internal functions

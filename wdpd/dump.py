@@ -6,18 +6,15 @@ from numpy import mean
 import pandas as pd
 import requests
 
+from .config import DATAPATH, WDQS_ENDPOINT, USER_AGENT
 
-DATAPATH = '/data/project/wdpd/data/'
-WDQS_ENDPOINT = 'https://query.wikidata.org/sparql'
-USERAGENT = f'{requests.utils.default_headers()["User-Agent"]} (Wikidata bot' \
-             ' by User:MisterSynergy; mailto:mister.synergy@yahoo.com)'
 
 #### functions not for export
 def query_wdqs(query:str) -> pd.DataFrame:
     response = requests.post(
         url=WDQS_ENDPOINT,
         data={ 'query' : query },
-        headers={ 'User-Agent': USERAGENT, 'Accept' : 'text/csv' }
+        headers={ 'User-Agent': USER_AGENT, 'Accept' : 'text/csv' }
     )
     return pd.read_csv(StringIO(response.text))
 

@@ -11,11 +11,7 @@ from numpy import array as np_array, amax
 import pandas as pd
 import requests
 
-
-WDQS_ENDPOINT:str = 'https://query.wikidata.org/sparql'
-WDQS_USERAGENT:str = f'{requests.utils.default_headers()["User-Agent"]} (Wikidata bot' \
-                      ' by User:MisterSynergy; mailto:mister.synergy@yahoo.com)'
-
+from .config import WDQS_ENDPOINT, USER_AGENT
 
 class PlotParamsDict(TypedDict):
     plot_window_days : int
@@ -72,7 +68,7 @@ def wdqs_query(query:str) -> pd.DataFrame:
         },
         headers={
             'Accept' : 'text/csv',
-            'User-Agent' : WDQS_USERAGENT
+            'User-Agent' : USER_AGENT
         }
     )
     return pd.read_csv(StringIO(response.text))
