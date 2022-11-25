@@ -24,7 +24,7 @@ class Replica:
         self.replica.close()
 
 
-def query_mediawiki(query:str) -> list[dict[str, Any]]:
+def _query_mediawiki(query:str) -> list[dict[str, Any]]:
     with Replica() as cursor:
         cursor.execute(query)
         result = cursor.fetchall()
@@ -32,7 +32,22 @@ def query_mediawiki(query:str) -> list[dict[str, Any]]:
     return result
 
 
-def edit_summary_broad_category(magic_action:str, actions:dict[str, list[str]]) -> str:
+def _query_mediawiki_to_dataframe(query:str, columns:dict[str, Any]) -> pd.DataFrame:
+    df = pd.DataFrame(
+        data=_query_mediawiki(query),
+        columns=columns.keys(),
+        dtype=columns
+    )
+
+    for column in df.columns:
+        if not pd.api.types.is_string_dtype(df[column]):
+            continue
+        df[column] = df[column].str.decode('utf8')
+
+    return df
+
+
+def _edit_summary_broad_category(magic_action:str, actions:dict[str, list[str]]) -> str:
     generic_actions = ['allclaims', 'terms', 'allsitelinks']
     for key in actions:
         if magic_action in actions[key] and magic_action not in generic_actions:
@@ -40,7 +55,7 @@ def edit_summary_broad_category(magic_action:str, actions:dict[str, list[str]]) 
     return 'NO_CAT'
 
 
-def query_ores_model_ids(ores_model_name:str) -> list[int]:
+def _query_ores_model_ids(ores_model_name:str) -> list[int]:
     sql = f"""SELECT
   oresm_id
 FROM
@@ -49,48 +64,10 @@ WHERE
   oresm_name='{ores_model_name}'
   AND oresm_is_current=1"""
 
-    query_result = query_mediawiki(sql)
+    query_result = _query_mediawiki(sql)
     ores_model_ids = [ int(row['oresm_id']) for row in query_result ]
 
     return ores_model_ids
-
-
-def query_translation_pages() -> list[str]:
-    sql = """SELECT
-      page_title
-    FROM
-      revtag
-        JOIN page ON rt_page=page_id
-        JOIN recentchanges ON rc_this_oldid=rt_revision
-    WHERE
-      rc_patrolled=0
-      AND page_namespace=1198"""
-    query_result = query_mediawiki(sql)
-
-    translation_pages = pd.DataFrame(
-        data={
-            'page_title' : [ row['page_title'].decode('utf8') for row in query_result ]
-        },
-        columns=[
-            'page_title'
-        ]
-    )
-
-    translation_pages['translatable_page'] = translation_pages['page_title'].apply(
-        func=lambda x : '/'.join(x.split('/')[:-2])
-    )
-    translation_pages['section'] = translation_pages['page_title'].apply(
-        func=lambda x : x.split('/')[-2]
-    )
-    translation_pages['lang'] = translation_pages['page_title'].apply(
-        func=lambda x : x.split('/')[-1]
-    )
-    translation_pages['translation_page'] = translation_pages[['translatable_page', 'lang']].apply(
-        axis=1,
-        func=lambda x : f'{x.translatable_page}/{x.lang}'
-    )
-
-    return translation_pages['translation_page'].unique().tolist()
 
 
 #### export functions
@@ -98,9 +75,9 @@ def get_unpatrolled_changes(change_tags:pd.DataFrame, ores_scores:pd.DataFrame, 
                                 actions:dict[str, list[str]]) -> pd.DataFrame:
     unpatrolled_changes = query_unpatrolled_changes()
 
-    unpatrolled_changes = amend_change_tags(unpatrolled_changes, change_tags)
-    unpatrolled_changes = amend_edit_summaries(unpatrolled_changes, actions)
-    unpatrolled_changes = amend_ores_scores(unpatrolled_changes, ores_scores)
+    unpatrolled_changes = _amend_change_tags(unpatrolled_changes, change_tags)
+    unpatrolled_changes = _amend_edit_summaries(unpatrolled_changes, actions)
+    unpatrolled_changes = _amend_ores_scores(unpatrolled_changes, ores_scores)
 
     return unpatrolled_changes
 
@@ -125,7 +102,7 @@ def query_unpatrolled_changes() -> pd.DataFrame:
     WHERE
       rc_patrolled IN (0, 1)
       AND rc_namespace=0"""
-    query_result = query_mediawiki(sql)
+    query_result = _query_mediawiki(sql)
 
     unpatrolled_changes = pd.DataFrame(
         data={
@@ -193,7 +170,7 @@ def query_change_tags() -> pd.DataFrame:
       rc_patrolled IN (0, 1)
       AND rc_namespace=0
       AND ct_id IS NOT NULL"""
-    query_result = query_mediawiki(sql)
+    query_result = _query_mediawiki(sql)
 
     change_tags = pd.DataFrame(
         data={
@@ -227,7 +204,7 @@ def query_top_patrollers(min_timestamp:int) -> pd.DataFrame:
       AND log_timestamp>={min_timestamp}
     ORDER BY
       log_timestamp ASC"""
-    query_result = query_mediawiki(sql)
+    query_result = _query_mediawiki(sql)
 
     top_patrollers = pd.DataFrame(
         data={
@@ -278,7 +255,7 @@ def query_ores_scores() -> pd.DataFrame:
         JOIN recentchanges ON oresc_rev=rc_this_oldid
     WHERE
       rc_patrolled IN (0, 1)"""
-    query_result = query_mediawiki(sql)
+    query_result = _query_mediawiki(sql)
 
     ores_scores = pd.DataFrame(
         data={
@@ -321,7 +298,7 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
     WHERE
       rc_patrolled IN (0, 1)
       AND rc_namespace!=0"""
-    query_result = query_mediawiki(sql)
+    query_result = _query_mediawiki(sql)
 
     unpatrolled_changes = pd.DataFrame(
         data={
@@ -373,6 +350,44 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
     )
 
     return unpatrolled_changes
+
+
+def query_translation_pages() -> list[str]:
+    sql = """SELECT
+      page_title
+    FROM
+      revtag
+        JOIN page ON rt_page=page_id
+        JOIN recentchanges ON rc_this_oldid=rt_revision
+    WHERE
+      rc_patrolled=0
+      AND page_namespace=1198"""
+    query_result = _query_mediawiki(sql)
+
+    translation_pages = pd.DataFrame(
+        data={
+            'page_title' : [ row['page_title'].decode('utf8') for row in query_result ]
+        },
+        columns=[
+            'page_title'
+        ]
+    )
+
+    translation_pages['translatable_page'] = translation_pages['page_title'].apply(
+        func=lambda x : '/'.join(x.split('/')[:-2])
+    )
+    translation_pages['section'] = translation_pages['page_title'].apply(
+        func=lambda x : x.split('/')[-2]
+    )
+    translation_pages['lang'] = translation_pages['page_title'].apply(
+        func=lambda x : x.split('/')[-1]
+    )
+    translation_pages['translation_page'] = translation_pages[['translatable_page', 'lang']].apply(
+        axis=1,
+        func=lambda x : f'{x.translatable_page}/{x.lang}'
+    )
+
+    return translation_pages['translation_page'].unique().tolist()
 
 
 def retrieve_namespace_resolver() -> dict[int, str]:
@@ -444,7 +459,7 @@ def retrieve_wdrfd_links() -> list[str]:
     return linked_items
 
 
-def amend_change_tags(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataFrame) -> pd.DataFrame:
+def _amend_change_tags(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataFrame) -> pd.DataFrame:
     reverted = [ 'mw-reverted' ]
     unpatrolled_changes = unpatrolled_changes.merge(
         right=change_tags.loc[change_tags['ctd_name'].isin(reverted), ['rc_id', 'ctd_name']],
@@ -464,7 +479,7 @@ def amend_change_tags(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataFrame
     return unpatrolled_changes
 
 
-def amend_edit_summaries(unpatrolled_changes:pd.DataFrame, actions:dict[str, list[str]]) -> pd.DataFrame:
+def _amend_edit_summaries(unpatrolled_changes:pd.DataFrame, actions:dict[str, list[str]]) -> pd.DataFrame:
     unpatrolled_changes = unpatrolled_changes.merge(
         right=unpatrolled_changes['comment_text'].str.extract(
             pat=r'^\/\* ((?<!\*\/).+?) \*\/ ?(.*)?',
@@ -538,18 +553,18 @@ def amend_edit_summaries(unpatrolled_changes:pd.DataFrame, actions:dict[str, lis
 
     unpatrolled_changes['editsummary-magic-action-broad'] = \
         unpatrolled_changes['editsummary-magic-action'].apply(
-            func=edit_summary_broad_category,
+            func=_edit_summary_broad_category,
             args=(actions,)
         )
 
     return unpatrolled_changes
 
 
-def amend_ores_scores(unpatrolled_changes:pd.DataFrame, ores_scores:pd.DataFrame) -> pd.DataFrame:
+def _amend_ores_scores(unpatrolled_changes:pd.DataFrame, ores_scores:pd.DataFrame) -> pd.DataFrame:
     ores_model_names = [ 'damaging', 'goodfaith' ]
 
     for ores_model_name in ores_model_names:
-        ores_model_ids = query_ores_model_ids(ores_model_name)
+        ores_model_ids = _query_ores_model_ids(ores_model_name)
         filt_merge = (ores_scores['oresc_model'].isin(ores_model_ids))
         unpatrolled_changes = unpatrolled_changes.merge(
             right=ores_scores.loc[filt_merge, ['oresc_rev', 'oresc_probability']],
