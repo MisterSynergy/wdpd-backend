@@ -1,5 +1,6 @@
 from glob import glob
 from io import StringIO
+import logging
 from math import ceil as m_ceil
 from os import remove
 from typing import Optional, TypedDict
@@ -12,6 +13,10 @@ import pandas as pd
 import requests
 
 from .config import WDQS_ENDPOINT, USER_AGENT
+
+
+LOG = logging.getLogger(__name__)
+
 
 class PlotParamsDict(TypedDict):
     plot_window_days : int

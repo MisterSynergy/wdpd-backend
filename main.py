@@ -1,18 +1,24 @@
+import logging
+import logging.config
 from os import mkdir
 from os.path import isdir, expanduser, join
 from time import strftime, time
 
 import pandas as pd
 
+logging.config.fileConfig('./logging.conf')
+
 import wdpd.query as query
 import wdpd.plot as plot
 import wdpd.dump as dump
 
 
+LOG = logging.getLogger()
+
+
 def df_info(dataframe:pd.DataFrame) -> None:
-    print(dataframe.shape)
-    print(dataframe.head())
-    print()
+    LOG.info(dataframe.shape)
+    LOG.info(dataframe.head())
 
 
 def dump_update_timestamp(timestmp:float) -> None:
@@ -73,8 +79,8 @@ def setup_directories() -> None:
 def main() -> None:
     #### Aux variables
     start_timestamp = time()
-    print(f'Script last executed: {strftime("%Y-%m-%d, %H:%M:%S (%Z)")}')
-    debugging = False # True: prints some dataframe information
+    LOG.info(f'Script last executed: {strftime("%Y-%m-%d, %H:%M:%S (%Z)")}')
+    debugging = False # True: adds some dataframe information to logfile
     actions=get_actions()
     setup_directories()
 

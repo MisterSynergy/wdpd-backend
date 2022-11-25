@@ -1,3 +1,4 @@
+import logging
 from json import JSONDecodeError
 from typing import Any
 
@@ -6,6 +7,9 @@ import pandas as pd
 import requests
 
 from .config import WIKIDATA_API_ENDPOINT, USER_AGENT, WDCM_TOPLIST_URL, REPLICA_PARAMS
+
+
+LOG = logging.getLogger(__name__)
 
 
 #### internal functions
@@ -139,20 +143,20 @@ def query_unpatrolled_changes() -> pd.DataFrame:
             format='%Y%m%d%H%M%S'
         )
     except ValueError as exception:
-        print('ValueError', exception)
+        LOG.warning('ValueError', exception)
 
     try:
         unpatrolled_changes['len_diff'] = unpatrolled_changes['rc_new_len'] \
             - unpatrolled_changes['rc_old_len']
     except ValueError as exception:
-        print('ValueError', exception)
+        LOG.warning('ValueError', exception)
 
     try:
         unpatrolled_changes['num_title'] = pd.to_numeric(
             unpatrolled_changes['rc_title'].str.slice(1)
         )
     except ValueError as exception:
-        print('ValueError', exception)
+        LOG.warning('ValueError', exception)
 
     return unpatrolled_changes
 
@@ -337,12 +341,12 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
             format='%Y%m%d%H%M%S'
         )
     except ValueError as exception:
-        print('ValueError', exception)
+        LOG.warning('ValueError', exception)
     try:
         unpatrolled_changes['len_diff'] = unpatrolled_changes['rc_new_len'] \
             - unpatrolled_changes['rc_old_len']
     except ValueError as exception:
-        print('ValueError', exception)
+        LOG.warning('ValueError', exception)
 
     namespaces = retrieve_namespace_resolver()
     unpatrolled_changes['namespace'] = unpatrolled_changes['rc_namespace'].apply(
@@ -602,7 +606,7 @@ def compile_patrol_progress(unpatrolled_changes:pd.DataFrame, \
             format='%Y%m%d%H%M%S'
         )
     except ValueError as exception:
-        print('ValueError', exception)
+        LOG.warning('ValueError', exception)
         return None
 
     patrol_progress['patrol_delay'] = patrol_progress['log_time'] \

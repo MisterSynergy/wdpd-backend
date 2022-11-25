@@ -1,5 +1,6 @@
 from glob import glob
 from io import StringIO
+import logging
 from os import remove
 
 from numpy import mean
@@ -7,6 +8,9 @@ import pandas as pd
 import requests
 
 from .config import DATAPATH, WDQS_ENDPOINT, USER_AGENT
+
+
+LOG = logging.getLogger(__name__)
 
 
 #### functions not for export
