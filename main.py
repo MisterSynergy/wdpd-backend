@@ -1,7 +1,6 @@
 import logging
 import logging.config
-from os import mkdir
-from os.path import isdir, expanduser, join
+from os.path import expanduser
 from time import time
 
 import pandas as pd
@@ -11,72 +10,10 @@ logging.config.fileConfig('./logging.conf')
 import wdpd.query as query
 import wdpd.plot as plot
 import wdpd.dump as dump
+from wdpd.helper import dump_update_timestamp, get_actions, init_directories, df_info
 
 
 LOG = logging.getLogger()
-
-
-def df_info(dataframe:pd.DataFrame) -> None:
-    LOG.info(dataframe.shape)
-    LOG.info(dataframe.head())
-
-
-def dump_update_timestamp(timestmp:float) -> None:
-    update_file = f'{expanduser("~")}/data/update.txt'
-    with open(update_file, mode='w', encoding='utf8') as file_handle:
-        file_handle.write(str(round(timestmp)))
-    LOG.info(f'dumped update timestamp {round(timestmp)}')
-
-
-def get_actions() -> dict[str, list[str]]:
-    actions = {
-        'claim' : ['wbsetclaim', 'wbsetclaim-create', 'wbsetclaim-update', 'wbsetclaimvalue',
-                   'wbcreateclaim-create', 'wbcreateclaim-novalue', 'wbcreateclaim-somevalue',
-                   'wbremoveclaims', 'wbremoveclaims-remove', 'wbsetclaim-update-rank',
-                   'wbsetstatementrank', 'wbsetstatementrank-deprecated',
-                   'wbsetstatementrank-normal', 'wbsetstatementrank-preferred'],
-        'qualifier' : ['wbsetqualifier', 'wbsetqualifier-add', 'wbsetqualifier-update',
-                       'wbsetclaim-update-qualifiers', 'wbremovequalifiers'],
-        'reference' : ['wbsetreference', 'wbsetreference-add', 'wbsetclaim-update-references',
-                       'wbremovereferences', 'wbremovereferences-remove'],
-        'sitelink' : ['wbsetsitelink-add', 'wbsetsitelink-remove', 'wbsetsitelink-set'],
-        'sitelinkmove' : ['clientsitelink-update', 'clientsitelink-remove'],
-        'label' : ['wbsetlabel-add', 'wbsetlabel-remove', 'wbsetlabel-set'],
-        'description' : ['wbsetdescription-add', 'wbsetdescription-remove',
-                         'wbsetdescription-set' ],
-        'alias' : ['wbsetaliases-add', 'wbsetaliases-remove', 'wbsetaliases-set',
-                   'wbsetaliases-update'],
-        'anyterms' : ['wbsetlabeldescriptionaliases'],
-        'linktitles' : ['wblinktitles-create', 'wblinktitles-connect'],
-        'editentity' : ['wbeditentity-create', 'wbeditentity-create-item',
-                        'wbeditentity-override', 'wbeditentity-update',
-                        'wbeditentity-update-languages', 'wbeditentity-update-languages-short',
-                        'wbeditentity-update-languages-and-other-short'],
-        'merge' : ['wbmergeitems-to', 'wbmergeitems-from', 'wbcreateredirect'],
-        'revert' : ['undo', 'restore'],
-        'none' : ['None']
-    }
-
-    actions['allclaims'] = actions['claim'] + actions['qualifier'] + actions['reference']
-    actions['terms'] = actions['label'] + actions['description'] + actions['alias'] \
-        + actions['anyterms']
-    actions['allsitelinks'] = actions['sitelink'] + actions['sitelinkmove']
-
-    return actions
-
-
-def init_directories() -> None:
-    required_directories = [
-        f'{expanduser("~")}/data',
-        f'{expanduser("~")}/plots'
-    ]
-
-    for required_directory in required_directories:
-        if isdir(required_directory):
-            continue
-        mkdir(join(expanduser('~'), required_directory))
-
-    LOG.info('Initialized directories')
 
 
 def main() -> None:

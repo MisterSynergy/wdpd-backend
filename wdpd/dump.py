@@ -1,56 +1,17 @@
 from glob import glob
-from io import StringIO
 import logging
-from os import remove
-from time import perf_counter
 
 from numpy import mean
 import pandas as pd
-import requests
 
-from .config import DATAPATH, WDQS_ENDPOINT, USER_AGENT
+from .config import DATAPATH
+from .helper import delete_file, wdqs_query
 
 
 LOG = logging.getLogger(__name__)
 
 
 #### functions not for export
-def wdqs_query(query:str) -> pd.DataFrame:
-    t_query_start = perf_counter()
-
-    response = requests.post(
-        url=WDQS_ENDPOINT,
-        data={
-            'query' : query
-        },
-        headers={
-            'Accept' : 'text/csv',
-            'User-Agent' : USER_AGENT
-        }
-    )
-
-    t_query_end = perf_counter()
-
-    df = pd.read_csv(
-        StringIO(
-            response.text
-        )
-    )
-
-    LOG.info(f'Queried WDQS to dataframe; query time {t_query_end - t_query_start}')
-
-    return df
-
-
-def delete_file(filename:str) -> None:
-    try:
-        remove(filename)
-    except FileNotFoundError:
-        pass
-
-    LOG.debug(f'Tried to delete file {filename}')
-
-
 def dump_dataframe(dataframe:pd.DataFrame, filename:str, head_limit:int=50) -> None:
     dataframe.to_csv(DATAPATH + filename.format(mode='full'), sep='\t')
     dataframe.head(head_limit).to_csv(DATAPATH + filename.format(mode='head'), sep='\t')

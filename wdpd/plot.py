@@ -1,9 +1,6 @@
 from glob import glob
-from io import StringIO
 import logging
 from math import ceil as m_ceil
-from os import remove
-from time import perf_counter
 from typing import Optional, TypedDict
 
 from matplotlib import cm
@@ -11,9 +8,8 @@ from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 from numpy import array as np_array, amax
 import pandas as pd
-import requests
 
-from .config import WDQS_ENDPOINT, USER_AGENT
+from .helper import delete_file, wdqs_query
 
 
 LOG = logging.getLogger(__name__)
@@ -57,42 +53,6 @@ class Plot:
             if self.svg is True:
                 self.fig.savefig(f'{self.filename}.svg')
         plt.close(self.fig)
-
-
-def delete_file(filename:str) -> None:
-    try:
-        remove(filename)
-    except FileNotFoundError:
-        pass
-
-    LOG.debug(f'Tried to delete file {filename}')
-
-
-def wdqs_query(query:str) -> pd.DataFrame:
-    t_query_start = perf_counter()
-
-    response = requests.post(
-        url=WDQS_ENDPOINT,
-        data={
-            'query' : query
-        },
-        headers={
-            'Accept' : 'text/csv',
-            'User-Agent' : USER_AGENT
-        }
-    )
-
-    t_query_end = perf_counter()
-
-    df = pd.read_csv(
-        StringIO(
-            response.text
-        )
-    )
-
-    LOG.info(f'Queried WDQS to dataframe; query time {t_query_end - t_query_start}')
-
-    return df
 
 
 def plot_edits_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> int:
