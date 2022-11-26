@@ -158,6 +158,8 @@ def query_unpatrolled_changes() -> pd.DataFrame:
     except ValueError as exception:
         LOG.warning('ValueError', exception)
 
+    LOG.info('Queried unpatrolled changes')
+
     return unpatrolled_changes
 
 
@@ -188,6 +190,8 @@ def query_change_tags() -> pd.DataFrame:
             'ctd_name'
         ]
     )
+
+    LOG.info('Queried change tags')
 
     return change_tags
 
@@ -244,6 +248,8 @@ def query_top_patrollers(min_timestamp:int) -> pd.DataFrame:
 
     top_patrollers.drop(labels='log_params', axis=1, inplace=True)
 
+    LOG.info('Queried top patrollers')
+
     return top_patrollers
 
 
@@ -277,6 +283,8 @@ def query_ores_scores() -> pd.DataFrame:
             'oresc_is_predicted'
         ]
     )
+
+    LOG.info('Queried ORES scores')
 
     return ores_scores
 
@@ -353,6 +361,8 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
         func=lambda x : namespaces.get(x)  # pylint: disable=unnecessary-lambda
     )
 
+    LOG.info('Queried unpatrolled changes outside main namespace')
+
     return unpatrolled_changes
 
 
@@ -391,6 +401,8 @@ def query_translation_pages() -> list[str]:
         func=lambda x : f'{x.translatable_page}/{x.lang}'
     )
 
+    LOG.info('Queried translation pages')
+
     return translation_pages['translation_page'].unique().tolist()
 
 
@@ -420,6 +432,8 @@ def retrieve_namespace_resolver() -> dict[int, str]:
     for namespace, data in payload.get('query', {}).get('namespaces', {}).items():
         namespaces[int(namespace)] = data.get('name')
 
+    LOG.info('Retrieved namespace resolver')
+
     return namespaces
 
 
@@ -436,6 +450,8 @@ def retrieve_highly_used_item_list() -> pd.DataFrame:
         },
         header=0
     )
+
+    LOG.info('Retrieved highly used item list')
 
     return wdcm_toplist
 
@@ -460,6 +476,8 @@ def retrieve_wdrfd_links() -> list[str]:
         for elem in page_info_dict.get('links', []):
             linked_items.append(elem.get('title'))
 
+    LOG.info('Retrieved items linked from WD:RfD')
+
     return linked_items
 
 
@@ -479,6 +497,8 @@ def _amend_change_tags(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataFram
         on='rc_id'
     )
     unpatrolled_changes.rename(columns={'ctd_name' : 'suggested_edit'}, inplace=True)
+
+    LOG.info('Amended changed tags to unpatrolled changes')
 
     return unpatrolled_changes
 
@@ -561,6 +581,8 @@ def _amend_edit_summaries(unpatrolled_changes:pd.DataFrame, actions:dict[str, li
             args=(actions,)
         )
 
+    LOG.info('Amended edit summary details to unpatrolled changes')
+
     return unpatrolled_changes
 
 
@@ -583,6 +605,8 @@ def _amend_ores_scores(unpatrolled_changes:pd.DataFrame, ores_scores:pd.DataFram
             inplace=True
         )
         unpatrolled_changes.drop(labels='oresc_rev', axis=1, inplace=True)
+
+    LOG.info('Amended ORES scores to unpatrolled changes')
 
     return unpatrolled_changes
 
@@ -618,5 +642,6 @@ def compile_patrol_progress(unpatrolled_changes:pd.DataFrame, \
         'timedelta64[s]'
     ) / 3600
 
-    return patrol_progress
+    LOG.info('Compiled patrol progress dataframe')
 
+    return patrol_progress

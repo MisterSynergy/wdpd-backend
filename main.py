@@ -2,7 +2,7 @@ import logging
 import logging.config
 from os import mkdir
 from os.path import isdir, expanduser, join
-from time import strftime, time
+from time import time
 
 import pandas as pd
 
@@ -25,6 +25,7 @@ def dump_update_timestamp(timestmp:float) -> None:
     update_file = f'{expanduser("~")}/data/update.txt'
     with open(update_file, mode='w', encoding='utf8') as file_handle:
         file_handle.write(str(round(timestmp)))
+    LOG.info(f'dumped update timestamp {round(timestmp)}')
 
 
 def get_actions() -> dict[str, list[str]]:
@@ -64,7 +65,7 @@ def get_actions() -> dict[str, list[str]]:
     return actions
 
 
-def setup_directories() -> None:
+def init_directories() -> None:
     required_directories = [
         f'{expanduser("~")}/data',
         f'{expanduser("~")}/plots'
@@ -75,16 +76,20 @@ def setup_directories() -> None:
             continue
         mkdir(join(expanduser('~'), required_directory))
 
+    LOG.info('Initialized directories')
+
 
 def main() -> None:
+    LOG.info('Script execution started')
+
     #### Aux variables
     start_timestamp = time()
-    LOG.info(f'Script last executed: {strftime("%Y-%m-%d, %H:%M:%S (%Z)")}')
     debugging = False # True: adds some dataframe information to logfile
     actions=get_actions()
-    setup_directories()
+    init_directories()
 
     #### Query data
+    LOG.info('Start querying data')
     change_tags = query.query_change_tags()
     ores_scores = query.query_ores_scores()
     unpatrolled_changes = query.get_unpatrolled_changes(change_tags, ores_scores, actions)
@@ -103,6 +108,7 @@ def main() -> None:
             df_info(dataframe)
 
     #### plot variables
+    LOG.info('Start plotting data')
     plot_window_days = 28
     filter_window = (unpatrolled_changes['time']>=pd.Timestamp.today().floor('D')-pd.to_timedelta(f'{plot_window_days:d} days')) \
         & (unpatrolled_changes['time']<pd.Timestamp.today().floor('D'))
@@ -168,6 +174,7 @@ def main() -> None:
     plot.plot_remaining_by_date(unpatrolled_changes, plot_params)
 
     #### Dump worklists
+    LOG.info('Start dumping data')
     filt_today = (unpatrolled_changes['time']>=pd.Timestamp.today().floor('D'))
     filt_3d_rolling = (unpatrolled_changes['time']>=pd.Timestamp.today()-pd.to_timedelta('3 days'))
     filt_7d_rolling = (unpatrolled_changes['time']>=pd.Timestamp.today()-pd.to_timedelta('7 days'))

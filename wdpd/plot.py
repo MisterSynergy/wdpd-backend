@@ -3,6 +3,7 @@ from io import StringIO
 import logging
 from math import ceil as m_ceil
 from os import remove
+from time import perf_counter
 from typing import Optional, TypedDict
 
 from matplotlib import cm
@@ -64,8 +65,12 @@ def delete_file(filename:str) -> None:
     except FileNotFoundError:
         pass
 
+    LOG.debug(f'Tried to delete file {filename}')
+
 
 def wdqs_query(query:str) -> pd.DataFrame:
+    t_query_start = perf_counter()
+
     response = requests.post(
         url=WDQS_ENDPOINT,
         data={
@@ -76,7 +81,18 @@ def wdqs_query(query:str) -> pd.DataFrame:
             'User-Agent' : USER_AGENT
         }
     )
-    return pd.read_csv(StringIO(response.text))
+
+    t_query_end = perf_counter()
+
+    df = pd.read_csv(
+        StringIO(
+            response.text
+        )
+    )
+
+    LOG.info(f'Queried WDQS to dataframe; query time {t_query_end - t_query_start}')
+
+    return df
 
 
 def plot_edits_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> int:
@@ -99,6 +115,8 @@ def plot_edits_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
         ax.set(ylim=(0, ymax))
         ax.set_xticks(plot_params.get('xticks_window'))
         ax.set_xticklabels(plot_params.get('xticklabels_window'))
+
+    LOG.info('Plotted edits by date')
 
     return ymax
 
@@ -127,6 +145,8 @@ def plot_edits_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:PlotPara
         ax.set_xticks(range(0, 7, 1))
         ax.set_xticklabels(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
 
+    LOG.info('Plotted edits by weekday')
+
 
 def plot_edits_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
     filename = f'{plot_params.get("plot_path")}editsByHour'
@@ -151,6 +171,8 @@ def plot_edits_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
         _, _, _, ymax = ax.axis()
         ax.set(xlim=(0, 24), ylim=(0, ymax))
 
+    LOG.info('Plotted edits by hour')
+
 
 def plot_patrol_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> int:
     filename = f'{plot_params.get("plot_path")}patrolstatusByDate'
@@ -171,6 +193,8 @@ def plot_patrol_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plo
         ax.set(ylim=(0, ymax))
         ax.set_xticks(plot_params.get('xticks_window'))
         ax.set_xticklabels(plot_params.get('xticklabels_window'))
+
+    LOG.info('Plotted patrol status by date')
 
     return ymax
 
@@ -198,6 +222,8 @@ def plot_patrol_status_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:
         ax.set_xticks(range(0, 7, 1))
         ax.set_xticklabels(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
 
+    LOG.info('Plotted patrol status by weekday')
+
 
 def plot_patrol_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
     filename = f'{plot_params.get("plot_path")}patrolstatusByHour'
@@ -221,6 +247,8 @@ def plot_patrol_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:Plo
         _, _, _, ymax = ax.axis()
         ax.set(xlim=(0, 24), ylim=(0, ymax))
 
+    LOG.info('Plotted patrol status by hour')
+
 
 def plot_editor_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> int:
     filename = f'{plot_params.get("plot_path")}editorstatusByDate'
@@ -242,6 +270,8 @@ def plot_editor_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plo
         ax.set(ylim=(0, ymax))
         ax.set_xticks(plot_params.get('xticks_window'))
         ax.set_xticklabels(plot_params.get('xticklabels_window'))
+
+    LOG.info('Plotted editor status by date')
 
     return ymax
 
@@ -270,6 +300,8 @@ def plot_editor_status_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:
         ax.set_xticks(range(0, 7, 1))
         ax.set_xticklabels(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
 
+    LOG.info('Plotted editor status by weekday')
+
 
 def plot_editor_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
     filename = f'{plot_params.get("plot_path")}editorstatusByHour'
@@ -294,6 +326,8 @@ def plot_editor_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:Plo
         _, _, _, ymax = ax.axis()
         ax.set(xlim=(0, 24), ylim=(0, ymax))
 
+    LOG.info('Plotted editor status by hour')
+
 
 def plot_unpatrolled_actions_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
     filename = f'{plot_params.get("plot_path")}actionsByDate'
@@ -315,6 +349,8 @@ def plot_unpatrolled_actions_by_date(unpatrolled_changes:pd.DataFrame, plot_para
         ax.set(ylim=(0, ymax))
         ax.set_xticks(plot_params.get('xticks_window'))
         ax.set_xticklabels(plot_params.get('xticklabels_window'))
+
+    LOG.info('Plotted unpatrolled actions by date')
 
 
 def plot_reverted_by_date(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataFrame, plot_params:PlotParamsDict) -> None:
@@ -342,6 +378,8 @@ def plot_reverted_by_date(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataF
         ax.set_xticks(plot_params.get('xticks_window'))
         ax.set_xticklabels(plot_params.get('xticklabels_window'))
 
+    LOG.info('Plotted reverted edits by date')
+
 
 def plot_qid_bin_by_revisions(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
     filename = f'{plot_params.get("plot_path")}qidBinRev'
@@ -364,6 +402,8 @@ def plot_qid_bin_by_revisions(unpatrolled_changes:pd.DataFrame, plot_params:Plot
         #xmin, xmax, ymin, ymax = ax.axis()
         ax.set(xlim=(-0.5, plot_params.get('qid_max', 200000000)/plot_params.get('qid_bin_size', 1000000)-0.5))
 
+    LOG.info('Plotted QID bins by revisions')
+
 
 def plot_qid_bin_by_item(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
     filename = f'{plot_params.get("plot_path")}qidBinQid'
@@ -380,6 +420,8 @@ def plot_qid_bin_by_item(unpatrolled_changes:pd.DataFrame, plot_params:PlotParam
         ax.set_xticks([0, 20, 40, 60, 80, 100])
         ax.set_xticklabels(['Q0', 'Q20M', 'Q40M', 'Q60M', 'Q80M', 'Q100M'], rotation=0)
         ax.set(xlim=(-0.5, plot_params.get('qid_max', 200000000)/plot_params.get('qid_bin_size', 1000000)-0.5))
+
+    LOG.info('Plotted QID bins by items')
 
 
 def plot_broad_action_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
@@ -399,6 +441,8 @@ def plot_broad_action_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plot
         ax.set_ylabel('number of changes')
         ax.set_xticks(range(0, 29, 7)) # also messy
         ax.set_xticklabels(plot_params.get('xticklabels_window'), rotation=0, ha='center')
+
+    LOG.info('Plotted broad action by date')
 
 
 def plot_broad_action_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
@@ -423,6 +467,8 @@ def plot_broad_action_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_pa
         ax.invert_yaxis()
         ax.set_xlabel('number of changes')
         ax.set_ylabel('type of action')
+
+    LOG.info('Plotted broad action by patrol status')
 
 
 def plot_language_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, termactions:list[str]) -> None: # termactions=actions['terms']
@@ -456,6 +502,8 @@ def plot_language_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params
     tmp2.sort_values(by=['total', 'unpatrolled'], ascending=[False, False], inplace=True)
 
     tmp2.to_csv('/data/project/wdpd/data/plot-language-full.tsv', sep='\t')
+
+    LOG.info('Plotted languages by patrol status')
 
 
 def plot_property_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, claimactions:list[str]) -> None: # claimactions=actions['allclaims']
@@ -501,6 +549,8 @@ def plot_property_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params
 
     tmp2.to_csv('/data/project/wdpd/data/plot-property-full.tsv', sep='\t')
 
+    LOG.info('Plotted properties by patrol status')
+
 
 def plot_sitelink_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, sitelinkactions:list[str]) -> None: # sitelinkactions=actions['sitelink'] or actions['allsitelinks']
     filename = f'{plot_params.get("plot_path")}sitelinkByPatrolStatus'
@@ -534,6 +584,8 @@ def plot_sitelink_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params
 
     tmp2.to_csv('/data/project/wdpd/data/plot-sitelink-full.tsv', sep='\t')
 
+    LOG.info('Plotted sitelinks by patrol status')
+
 
 def plot_other_actions_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, otheractions:list[str]) -> None: # otheractions=actions['editentity'] + actions['linktitles'] + actions['merge'] + actions['revert'] + actions['none']
     filename = f'{plot_params.get("plot_path")}otherActionsByPatrolStatus'
@@ -551,6 +603,8 @@ def plot_other_actions_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_p
         ax.invert_yaxis()
         ax.set_xlabel('number of changes')
         ax.set_ylabel('type of action')
+
+    LOG.info('Plotted other actions by patrol status')
 
 
 def plot_remaining_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
@@ -573,6 +627,8 @@ def plot_remaining_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotPar
         ax.set(ylim=(0, ymax))
         ax.set_xticks(plot_params.get('xticks_window'))
         ax.set_xticklabels(plot_params.get('xticklabels_window'))
+
+    LOG.info('Plotted remaining workload by date')
 
 
 def plot_ores_hist(unpatrolled_changes:pd.DataFrame, filt:pd.Series, grouper:pd.Series, ores_model:str, filenamepart:str, plot_params:PlotParamsDict, legend:Optional[list[str]]=None, titleprefix:str='') -> None:
@@ -606,6 +662,8 @@ def plot_ores_hist(unpatrolled_changes:pd.DataFrame, filt:pd.Series, grouper:pd.
         _, _, _, ymax = ax.axis()
         ax.set(xlim=(0, 1), ylim=(1, ymax))
 
+    LOG.debug('Plotted ORES histogram')
+
 
 def plot_ores_hist_by_editor_type(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str]) -> None:
     for ores_model in ores_models:
@@ -618,6 +676,8 @@ def plot_ores_hist_by_editor_type(unpatrolled_changes:pd.DataFrame, plot_params:
             plot_params,
             legend=['IP users', 'new registered users']
         )
+
+        LOG.info(f'Plotted ORES histogram by editor type for model {ores_model}')
 
 
 def plot_ores_hist_by_action(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str]) -> None:
@@ -632,6 +692,8 @@ def plot_ores_hist_by_action(unpatrolled_changes:pd.DataFrame, plot_params:PlotP
             titleprefix='new registered users; '
         )
 
+        LOG.info(f'Plotted ORES histogram by action for model {ores_model} and registered users')
+
     for ores_model in ores_models:
         plot_ores_hist(
             unpatrolled_changes,
@@ -642,6 +704,8 @@ def plot_ores_hist_by_action(unpatrolled_changes:pd.DataFrame, plot_params:PlotP
             plot_params,
             titleprefix='IP users; '
         )
+
+        LOG.info(f'Plotted ORES histogram by action for model {ores_model} and unregistered users')
 
 
 def plot_ores_hist_by_reverted(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str]) -> None:
@@ -657,6 +721,8 @@ def plot_ores_hist_by_reverted(unpatrolled_changes:pd.DataFrame, plot_params:Plo
             titleprefix='new registered users; '
         )
 
+        LOG.info(f'Plotted ORES histogram by revert status for model {ores_model} and registered users')
+
     for ores_model in ores_models:
         plot_ores_hist(
             unpatrolled_changes,
@@ -668,6 +734,9 @@ def plot_ores_hist_by_reverted(unpatrolled_changes:pd.DataFrame, plot_params:Plo
             legend=['not reverted', 'reverted'],
             titleprefix='IP users; '
         )
+
+        LOG.info(f'Plotted ORES histogram by revert status for model {ores_model} and unregistered users')
+
 
 def plot_ores_hist_by_language(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str], termactions:list[str]) -> None:
     top_languages = unpatrolled_changes.loc[unpatrolled_changes['editsummary-magic-action'].isin(termactions), 'editsummary-magic-param1'].value_counts().head(10).index.to_list()
@@ -683,6 +752,8 @@ def plot_ores_hist_by_language(unpatrolled_changes:pd.DataFrame, plot_params:Plo
             titleprefix='new registered users; '
         )
 
+        LOG.info(f'Plotted ORES histogram by language for model {ores_model} and registered users')
+
     for ores_model in ores_models:
         plot_ores_hist(
             unpatrolled_changes,
@@ -693,6 +764,8 @@ def plot_ores_hist_by_language(unpatrolled_changes:pd.DataFrame, plot_params:Plo
             plot_params,
             titleprefix='IP users; '
         )
+
+        LOG.info(f'Plotted ORES histogram by language for model {ores_model} and unregistered users')
 
 
 def plot_ores_hist_by_term_type(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str]) -> None:
@@ -707,6 +780,8 @@ def plot_ores_hist_by_term_type(unpatrolled_changes:pd.DataFrame, plot_params:Pl
             titleprefix='new registered users; '
         )
 
+        LOG.info(f'Plotted ORES histogram by term type for model {ores_model} and registered users')
+
     for ores_model in ores_models:
         plot_ores_hist(
             unpatrolled_changes,
@@ -717,6 +792,8 @@ def plot_ores_hist_by_term_type(unpatrolled_changes:pd.DataFrame, plot_params:Pl
             plot_params,
             titleprefix='IP users; '
         )
+
+        LOG.info(f'Plotted ORES histogram by term type for model {ores_model} and unregistered users')
 
 
 def plot_ores_heatmap(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, filenamepart:str, filt:pd.Series, titleprefix:str='') -> None:
@@ -746,6 +823,8 @@ def plot_ores_heatmap(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDi
             rotation=90
         )
 
+    LOG.debug('Plotted ORES heatmap')
+
 
 def plot_ores_heatmaps(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
     plot_ores_heatmap(
@@ -755,6 +834,8 @@ def plot_ores_heatmaps(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
         filt=(unpatrolled_changes['actor_user'].notna()),
         titleprefix='new registered users; '
     )
+    LOG.info('Plotted ORES heatmap for registered users')
+
     plot_ores_heatmap(
         unpatrolled_changes,
         plot_params,
@@ -762,6 +843,7 @@ def plot_ores_heatmaps(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
         filt=(unpatrolled_changes['actor_user'].isna()),
         titleprefix='IP users; '
     )
+    LOG.info('Plotted ORES heatmap for unregistered users')
 
 
 def get_bins(maximum:int) -> range:
@@ -821,6 +903,8 @@ def make_patrol_progress_plot(patrol_progress:pd.DataFrame, language:str, \
             ax.set_xticks(range(0, (m_ceil(max_patrol_time / ticks) + 1) * ticks, ticks))
             ax.set(xlim=(0, m_ceil(max_patrol_time / ticks) * ticks), ylim=(0, ymax))
 
+    LOG.info(f'Plotted patrol progress plot for language "{language}"')
+
 
 def make_patrol_progress_percentiles(patrol_progress:pd.DataFrame, language:str, \
                                      plot_params:PlotParamsDict) -> None:
@@ -846,6 +930,8 @@ def make_patrol_progress_percentiles(patrol_progress:pd.DataFrame, language:str,
         ax.set_xticks(range(0, (m_ceil(max_patrol_time / ticks) + 1) * ticks, ticks))
         ax.set(xlim=(0, m_ceil(max_patrol_time / ticks) * ticks), ylim=(0, 100))
         ax.grid(True)
+
+    LOG.info(f'Plotted patrol progress percentiles plot for language "{language}"')
 
 
 def make_all_patrol_progress_stats(patrol_progress:pd.DataFrame, plot_params:PlotParamsDict) -> None:

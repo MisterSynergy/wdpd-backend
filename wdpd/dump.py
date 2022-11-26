@@ -2,6 +2,7 @@ from glob import glob
 from io import StringIO
 import logging
 from os import remove
+from time import perf_counter
 
 from numpy import mean
 import pandas as pd
@@ -14,13 +15,31 @@ LOG = logging.getLogger(__name__)
 
 
 #### functions not for export
-def query_wdqs(query:str) -> pd.DataFrame:
+def wdqs_query(query:str) -> pd.DataFrame:
+    t_query_start = perf_counter()
+
     response = requests.post(
         url=WDQS_ENDPOINT,
-        data={ 'query' : query },
-        headers={ 'User-Agent': USER_AGENT, 'Accept' : 'text/csv' }
+        data={
+            'query' : query
+        },
+        headers={
+            'Accept' : 'text/csv',
+            'User-Agent' : USER_AGENT
+        }
     )
-    return pd.read_csv(StringIO(response.text))
+
+    t_query_end = perf_counter()
+
+    df = pd.read_csv(
+        StringIO(
+            response.text
+        )
+    )
+
+    LOG.info(f'Queried WDQS to dataframe; query time {t_query_end - t_query_start}')
+
+    return df
 
 
 def delete_file(filename:str) -> None:
@@ -29,10 +48,14 @@ def delete_file(filename:str) -> None:
     except FileNotFoundError:
         pass
 
+    LOG.debug(f'Tried to delete file {filename}')
+
 
 def dump_dataframe(dataframe:pd.DataFrame, filename:str, head_limit:int=50) -> None:
     dataframe.to_csv(DATAPATH + filename.format(mode='full'), sep='\t')
     dataframe.head(head_limit).to_csv(DATAPATH + filename.format(mode='head'), sep='\t')
+
+    LOG.debug(f'Dumped datafreame to "{filename}"')
 
 
 def dump_terms(unpatrolled_changes:pd.DataFrame, term_actions:list[str], language:str) -> None:
@@ -43,6 +66,8 @@ def dump_terms(unpatrolled_changes:pd.DataFrame, term_actions:list[str], languag
               'oresc_damaging', 'oresc_goodfaith', 'editsummary-magic-action']
     filename = f'term/worklist-{language}-terms-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields].sort_values(by='actor_name'), filename)
+
+    LOG.debug(f'Dumped terms for language "{language}"')
 
 
 def dump_terms_in_editentity(unpatrolled_changes:pd.DataFrame, language:str) -> None:
@@ -57,6 +82,8 @@ def dump_terms_in_editentity(unpatrolled_changes:pd.DataFrame, language:str) -> 
     filename = f'termee/worklist-{language}-terms-in-editentity-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields].sort_values(by='actor_name'), filename)
 
+    LOG.debug(f'Dumped terms in editentity for language "{language}"')
+
 
 def dump_terms_in_editentity_create(unpatrolled_changes:pd.DataFrame, language:str) -> None:
     filt = (unpatrolled_changes['rc_patrolled']==0) \
@@ -66,6 +93,8 @@ def dump_terms_in_editentity_create(unpatrolled_changes:pd.DataFrame, language:s
               'oresc_damaging', 'oresc_goodfaith', 'editsummary-magic-action']
     filename = f'termeec/worklist-{language}-terms-in-editentity-create-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields].sort_values(by='actor_name'), filename)
+
+    LOG.debug(f'Dumped terms in editentity creations for language "{language}"')
 
 
 def dump_project_sitelink_changes(unpatrolled_changes:pd.DataFrame, \
@@ -78,6 +107,8 @@ def dump_project_sitelink_changes(unpatrolled_changes:pd.DataFrame, \
     filename = f'page/worklist-{project}-page-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
 
+    LOG.debug(f'Dumped sitelink changes for project "{project}"')
+
 
 def dump_project_pagemoves(unpatrolled_changes:pd.DataFrame, sitelink_actions:list[str], \
                            project:str) -> None:
@@ -88,6 +119,8 @@ def dump_project_pagemoves(unpatrolled_changes:pd.DataFrame, sitelink_actions:li
               'oresc_damaging', 'oresc_goodfaith', 'editsummary-magic-action']
     filename = f'pagemove/worklist-{project}-pagemove-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
+
+    LOG.debug(f'Dumped page moves changes for project "{project}"')
 
 
 def dump_project_pageremovals(unpatrolled_changes:pd.DataFrame, sitelink_actions:list[str], \
@@ -101,6 +134,8 @@ def dump_project_pageremovals(unpatrolled_changes:pd.DataFrame, sitelink_actions
     filename = f'pageremoval/worklist-{project}-pageremoval-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
 
+    LOG.debug(f'Dumped pagelink removals for project "{project}"')
+
 
 def dump_editentity_changes(unpatrolled_changes:pd.DataFrame, magic_action:str) -> None:
     filt = (unpatrolled_changes['rc_patrolled']==0) \
@@ -109,6 +144,8 @@ def dump_editentity_changes(unpatrolled_changes:pd.DataFrame, magic_action:str) 
               'oresc_damaging', 'oresc_goodfaith', 'editsummary-magic-action']
     filename = f'editentity/worklist-{magic_action}-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
+
+    LOG.debug(f'Dumped editentity changes for action "{magic_action}"')
 
 
 def dump_property_changes(unpatrolled_changes:pd.DataFrame, claim_actions:list[str], prop:str) -> None:
@@ -119,6 +156,8 @@ def dump_property_changes(unpatrolled_changes:pd.DataFrame, claim_actions:list[s
               'oresc_damaging', 'oresc_goodfaith', 'editsummary-magic-action']
     filename = f'property/worklist-{prop}-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
+
+    LOG.debug(f'Dumped property changes for property "{prop}"')
 
 
 #### functions for export
@@ -173,6 +212,8 @@ def dump_worklist(unpatrolled_changes:pd.DataFrame, filt:pd.Series, name:str='')
     filename = f'worklist-{{mode}}{name}.tsv'
     dump_dataframe(patrol_stats, filename)
 
+    LOG.info(f'Dumped worklist {name}')
+
 
 def dump_ores_worklist_unregistered(unpatrolled_changes:pd.DataFrame, min_ores_score:float=0.9, \
                                     min_edits:int=10) -> None:
@@ -190,6 +231,8 @@ def dump_ores_worklist_unregistered(unpatrolled_changes:pd.DataFrame, min_ores_s
 
     filename = 'worklist-ores-{mode}.tsv'
     dump_dataframe(damaging_highscores.loc[filter_highscore], filename)
+
+    LOG.info('Dumped ORES worklist for unregistered users')
 
 
 def dump_ores_worklist_registered(unpatrolled_changes:pd.DataFrame, min_ores_score:float=0.7, \
@@ -209,6 +252,8 @@ def dump_ores_worklist_registered(unpatrolled_changes:pd.DataFrame, min_ores_sco
     filename = 'worklist-ores-{mode}-registered.tsv'
     dump_dataframe(damaging_highscores.loc[filter_highscore], filename)
 
+    LOG.info('Dumped ORES worklist for registered users')
+
 
 def dump_items_with_many_revisions(unpatrolled_changes:pd.DataFrame, \
                                    max_num_title:int=None) -> None:
@@ -224,6 +269,8 @@ def dump_items_with_many_revisions(unpatrolled_changes:pd.DataFrame, \
     filename = 'worklist-items-many-revisions-{mode}.tsv'
     dump_dataframe(many_revisions, filename)
 
+    LOG.info('Dumped items with many revisions')
+
 
 def dump_users_with_many_creations(unpatrolled_changes:pd.DataFrame) -> None:
     filt = (unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['rc_source']!='mw.edit')
@@ -233,6 +280,8 @@ def dump_users_with_many_creations(unpatrolled_changes:pd.DataFrame) -> None:
     ).count().sort_values(by='rc_id', ascending=False)
     filename = 'worklist-users-with-many-creations-{mode}.tsv'
     dump_dataframe(many_creations, filename)
+
+    LOG.info('Dumped users with many creations')
 
 
 def dump_highly_used_items(unpatrolled_changes:pd.DataFrame, wdcm_toplist:pd.DataFrame, \
@@ -247,12 +296,16 @@ def dump_highly_used_items(unpatrolled_changes:pd.DataFrame, wdcm_toplist:pd.Dat
     filename = 'worklist-highly-used-items-{mode}.tsv'
     dump_dataframe(toplist_unpatrolled_changes.sort_index(level=1, ascending=False), filename)
 
+    LOG.info('Dumped highly used items with edits')
+
 
 def dump_uncategorizable_editsummaries(unpatrolled_changes:pd.DataFrame) -> None:
     filt = (unpatrolled_changes['editsummary-magic-action-broad']=='NO_CAT')
     fields = ['rc_id', 'rc_timestamp', 'rc_title', 'rc_this_oldid', 'actor_name']
     filename = 'worklist-uncategorizable-editsummaries-{mode}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
+
+    LOG.info('Dumped edits with uncategorizable edit summaries')
 
 
 def dump_top_patrollers(unpatrolled_changes:pd.DataFrame, top_patrollers:pd.DataFrame) -> None:
@@ -288,9 +341,13 @@ def dump_top_patrollers(unpatrolled_changes:pd.DataFrame, top_patrollers:pd.Data
 
     dump_dataframe(top_patrollers_grouped, 'top-patrollers-{mode}.tsv', 20)
 
+    LOG.info('Dumped top patrollers')
+
 
 def dump_change_tags_list(change_tags:pd.DataFrame) -> None:
     change_tags[['ctd_name']].value_counts().to_csv(DATAPATH + 'change-tags.tsv', sep='\t')
+
+    LOG.info('Dumped change tag list')
 
 
 def dump_rfd_linked_items(unpatrolled_changes:pd.DataFrame, rfdlinks:list[str]) -> None:
@@ -323,16 +380,20 @@ WHERE {{
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language 'en' }}
 }} GROUP BY ?wditem ?itemLabel ?statements ?identifiers ?sitelinks"""
 
-    wdqs_data = query_wdqs(query)
+    wdqs_data = wdqs_query(query)
 
     rfd_linked = rfd_linked.merge(right=wdqs_data, left_on='rc_title', right_on='wditem')
     rfd_linked.to_csv(DATAPATH + 'wdrfd-linked-full.tsv', sep='\t')
+
+    LOG.info('Dumped items linked from WD:RfD')
 
 
 def dump_actions(actions:dict[str, list[str]]) -> None:
     with open(DATAPATH + 'actions.txt', mode='w', encoding='utf8') as file_handle:
         for key, value in actions.items():
             file_handle.write(f'{key}\t{", ".join(value)}\n')
+
+    LOG.info('Dumped actions')
 
 
 #### dump processors for export
@@ -350,6 +411,8 @@ def term_dump_processor(unpatrolled_changes:pd.DataFrame, term_actions:list[str]
 
     for language in languages:
         dump_terms(unpatrolled_changes, term_actions, language)
+
+    LOG.info('Dumped term edits')
 
 
 def term_in_editentity_dump_processor(unpatrolled_changes:pd.DataFrame) -> None:
@@ -373,6 +436,8 @@ def term_in_editentity_dump_processor(unpatrolled_changes:pd.DataFrame) -> None:
     for language in languages:
         dump_terms_in_editentity(unpatrolled_changes, language)
 
+    LOG.info('Dumped term in editentity edits')
+
 
 def term_in_editentity_create_dump_processor(unpatrolled_changes:pd.DataFrame) -> None:
     existing_dumps = glob(DATAPATH + 'termeec/worklist-*-terms-in-editentity-create-head.tsv')
@@ -388,6 +453,8 @@ def term_in_editentity_create_dump_processor(unpatrolled_changes:pd.DataFrame) -
 
     for language in languages:
         dump_terms_in_editentity_create(unpatrolled_changes, language)
+
+    LOG.info('Dumped term in editentity creations')
 
 
 def project_sitelinks_dump_processor(unpatrolled_changes:pd.DataFrame, \
@@ -405,6 +472,8 @@ def project_sitelinks_dump_processor(unpatrolled_changes:pd.DataFrame, \
 
     for project in projects:
         dump_project_sitelink_changes(unpatrolled_changes, sitelink_actions, project)
+
+    LOG.info('Dumped sitelink edits')
 
 
 def project_pagemoves_dump_processor(unpatrolled_changes:pd.DataFrame, \
@@ -424,6 +493,8 @@ def project_pagemoves_dump_processor(unpatrolled_changes:pd.DataFrame, \
     for project in projects:
         dump_project_pagemoves(unpatrolled_changes, sitelink_move_actions, project)
 
+    LOG.info('Dumped pagemove edits')
+
 
 def project_pageremovals_dump_processor(unpatrolled_changes:pd.DataFrame, \
                                         sitelink_move_actions:list[str]) -> None:
@@ -442,6 +513,8 @@ def project_pageremovals_dump_processor(unpatrolled_changes:pd.DataFrame, \
     for project in projects:
         dump_project_pageremovals(unpatrolled_changes, sitelink_move_actions, project)
 
+    LOG.info('Dumped page removal edits')
+
 
 def editentity_dump_processor(unpatrolled_changes:pd.DataFrame, editentity_actions:list[str]) -> None:
     existing_dumps = glob(DATAPATH + 'editentity/worklist-*-head.tsv')
@@ -457,6 +530,8 @@ def editentity_dump_processor(unpatrolled_changes:pd.DataFrame, editentity_actio
 
     for action in actions:
         dump_editentity_changes(unpatrolled_changes, action)
+
+    LOG.info('Dumped editentity edits')
 
 
 def property_dump_processor(unpatrolled_changes:pd.DataFrame, claim_actions:list[str]) -> None:
@@ -474,6 +549,8 @@ def property_dump_processor(unpatrolled_changes:pd.DataFrame, claim_actions:list
     for prop in properties:
         dump_property_changes(unpatrolled_changes, claim_actions, prop)
 
+    LOG.info('Dumped property edits')
+
 
 def print_patrol_progress_patrollers(patrol_progress:pd.DataFrame) -> None:
     languages = list(patrol_progress['editsummary-magic-param1'].unique())
@@ -489,6 +566,8 @@ def print_patrol_progress_patrollers(patrol_progress:pd.DataFrame) -> None:
         filt = (patrol_progress['editsummary-magic-param1']==language)
         filename = f'progress_patrollers_by_lang/patrollers-{language}-{{mode}}.tsv'
         dump_dataframe(patrol_progress.loc[filt].value_counts(subset='actor_name_y'), filename)
+
+    LOG.info('Dumped patrol progress patrollers')
 
 
 def print_patrol_progress_unpatrolled(patrol_progress:pd.DataFrame) -> None:
@@ -506,6 +585,8 @@ def print_patrol_progress_unpatrolled(patrol_progress:pd.DataFrame) -> None:
         with open(DATAPATH + filename, mode='w', encoding='utf8') as file_handle:
             file_handle.write(str(patrol_progress.loc[filt & (patrol_progress['patrol_delay'].isna())].shape[0]))
 
+    LOG.info('Dumped patrol progress unpatrolled edits')
+
 
 def print_patrol_progress_describe(patrol_progress:pd.DataFrame) -> None:
     languages = list(patrol_progress['editsummary-magic-param1'].unique())
@@ -521,6 +602,8 @@ def print_patrol_progress_describe(patrol_progress:pd.DataFrame) -> None:
         filename = f'progress_by_lang/describe-{language}.tsv'
         with open(DATAPATH + filename, mode='w', encoding='utf8') as file_handle:
             file_handle.write(patrol_progress.loc[filt, 'patrol_delay_seconds'].describe().to_string())
+
+    LOG.info('Dumped patrol progress describe')
 
 
 def make_all_patrol_progress_stats(patrol_progress:pd.DataFrame) -> None:
@@ -560,3 +643,5 @@ def make_not_ns0_stats(unpatrolled_changes:pd.DataFrame, translation_pages:list)
         filename = f'not_ns0/worklist-{namespace.replace(" ", "_")}-{{mode}}.tsv'
         fields = ['rc_id', 'rc_timestamp', 'rc_title', 'rc_this_oldid', 'actor_name', 'namespace', 'rc_source']
         dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
+
+        LOG.info(f'Dumped not-ns0 changes for namespace "{namespace}"')
