@@ -622,7 +622,7 @@ def plot_ores_hist(unpatrolled_changes:pd.DataFrame, filt:pd.Series, grouper:pd.
         _, _, _, ymax = ax.axis()
         ax.set(xlim=(0, 1), ylim=(1, ymax))
 
-    LOG.debug('Plotted ORES histogram')
+    LOG.info('Plotted ORES histogram')
 
 
 def plot_ores_hist_by_editor_type(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str]) -> None:
@@ -783,7 +783,7 @@ def plot_ores_heatmap(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDi
             rotation=90
         )
 
-    LOG.debug('Plotted ORES heatmap')
+    LOG.info('Plotted ORES heatmap')
 
 
 def plot_ores_heatmaps(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:

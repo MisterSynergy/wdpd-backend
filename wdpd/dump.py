@@ -16,7 +16,7 @@ def dump_dataframe(dataframe:pd.DataFrame, filename:str, head_limit:int=50) -> N
     dataframe.to_csv(DATAPATH + filename.format(mode='full'), sep='\t')
     dataframe.head(head_limit).to_csv(DATAPATH + filename.format(mode='head'), sep='\t')
 
-    LOG.debug(f'Dumped datafreame to "{filename}"')
+    LOG.info(f'Dumped DataFrame to "{filename.format(mode="full|head")}"')
 
 
 def dump_terms(unpatrolled_changes:pd.DataFrame, term_actions:list[str], language:str) -> None:
@@ -28,7 +28,7 @@ def dump_terms(unpatrolled_changes:pd.DataFrame, term_actions:list[str], languag
     filename = f'term/worklist-{language}-terms-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields].sort_values(by='actor_name'), filename)
 
-    LOG.debug(f'Dumped terms for language "{language}"')
+    LOG.info(f'Dumped terms for language "{language}"')
 
 
 def dump_terms_in_editentity(unpatrolled_changes:pd.DataFrame, language:str) -> None:
@@ -43,7 +43,7 @@ def dump_terms_in_editentity(unpatrolled_changes:pd.DataFrame, language:str) -> 
     filename = f'termee/worklist-{language}-terms-in-editentity-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields].sort_values(by='actor_name'), filename)
 
-    LOG.debug(f'Dumped terms in editentity for language "{language}"')
+    LOG.info(f'Dumped terms in editentity for language "{language}"')
 
 
 def dump_terms_in_editentity_create(unpatrolled_changes:pd.DataFrame, language:str) -> None:
@@ -55,7 +55,7 @@ def dump_terms_in_editentity_create(unpatrolled_changes:pd.DataFrame, language:s
     filename = f'termeec/worklist-{language}-terms-in-editentity-create-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields].sort_values(by='actor_name'), filename)
 
-    LOG.debug(f'Dumped terms in editentity creations for language "{language}"')
+    LOG.info(f'Dumped terms in editentity creations for language "{language}"')
 
 
 def dump_project_sitelink_changes(unpatrolled_changes:pd.DataFrame, \
@@ -68,7 +68,7 @@ def dump_project_sitelink_changes(unpatrolled_changes:pd.DataFrame, \
     filename = f'page/worklist-{project}-page-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
 
-    LOG.debug(f'Dumped sitelink changes for project "{project}"')
+    LOG.info(f'Dumped sitelink changes for project "{project}"')
 
 
 def dump_project_pagemoves(unpatrolled_changes:pd.DataFrame, sitelink_actions:list[str], \
@@ -81,7 +81,7 @@ def dump_project_pagemoves(unpatrolled_changes:pd.DataFrame, sitelink_actions:li
     filename = f'pagemove/worklist-{project}-pagemove-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
 
-    LOG.debug(f'Dumped page moves changes for project "{project}"')
+    LOG.info(f'Dumped page moves changes for project "{project}"')
 
 
 def dump_project_pageremovals(unpatrolled_changes:pd.DataFrame, sitelink_actions:list[str], \
@@ -95,7 +95,7 @@ def dump_project_pageremovals(unpatrolled_changes:pd.DataFrame, sitelink_actions
     filename = f'pageremoval/worklist-{project}-pageremoval-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
 
-    LOG.debug(f'Dumped pagelink removals for project "{project}"')
+    LOG.info(f'Dumped pagelink removals for project "{project}"')
 
 
 def dump_editentity_changes(unpatrolled_changes:pd.DataFrame, magic_action:str) -> None:
@@ -106,7 +106,7 @@ def dump_editentity_changes(unpatrolled_changes:pd.DataFrame, magic_action:str) 
     filename = f'editentity/worklist-{magic_action}-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
 
-    LOG.debug(f'Dumped editentity changes for action "{magic_action}"')
+    LOG.info(f'Dumped editentity changes for action "{magic_action}"')
 
 
 def dump_property_changes(unpatrolled_changes:pd.DataFrame, claim_actions:list[str], prop:str) -> None:
@@ -118,7 +118,7 @@ def dump_property_changes(unpatrolled_changes:pd.DataFrame, claim_actions:list[s
     filename = f'property/worklist-{prop}-{{mode}}.tsv'
     dump_dataframe(unpatrolled_changes.loc[filt, fields], filename)
 
-    LOG.debug(f'Dumped property changes for property "{prop}"')
+    LOG.info(f'Dumped property changes for property "{prop}"')
 
 
 #### functions for export

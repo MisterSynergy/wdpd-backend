@@ -19,7 +19,7 @@ def delete_file(filename:str) -> None:
     except FileNotFoundError:
         pass
 
-    LOG.debug(f'Tried to delete file {filename}')
+    LOG.info(f'Tried to delete file {filename}')
 
 
 def wdqs_query(query:str) -> pd.DataFrame:
