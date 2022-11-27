@@ -4,7 +4,8 @@ import logging
 from numpy import mean
 import pandas as pd
 
-from .config import DATAPATH
+from .config import DATAPATH, ORES_TRIGGER_UNREGISTERED_SCORE, ORES_TRIGGER_UNREGISTERED_EDITS, \
+    ORES_TRIGGER_REGISTERED_SCORE, ORES_TRIGGER_REGISTERED_EDITS, MAX_QID_NUM, MIN_ENTITY_USAGE
 from .helper import delete_file, wdqs_query
 
 
@@ -176,8 +177,8 @@ def dump_worklist(unpatrolled_changes:pd.DataFrame, filt:pd.Series, name:str='')
     LOG.info(f'Dumped worklist {name}')
 
 
-def dump_ores_worklist_unregistered(unpatrolled_changes:pd.DataFrame, min_ores_score:float=0.9, \
-                                    min_edits:int=10) -> None:
+def dump_ores_worklist_unregistered(unpatrolled_changes:pd.DataFrame, min_ores_score:float=ORES_TRIGGER_UNREGISTERED_SCORE, \
+                                    min_edits:int=ORES_TRIGGER_UNREGISTERED_EDITS) -> None:
     filt = (unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_user'].isna())
     fields = ['rc_id', 'actor_name', 'oresc_damaging']
 
@@ -196,8 +197,8 @@ def dump_ores_worklist_unregistered(unpatrolled_changes:pd.DataFrame, min_ores_s
     LOG.info('Dumped ORES worklist for unregistered users')
 
 
-def dump_ores_worklist_registered(unpatrolled_changes:pd.DataFrame, min_ores_score:float=0.7, \
-                                  min_edits:int=10) -> None:
+def dump_ores_worklist_registered(unpatrolled_changes:pd.DataFrame, min_ores_score:float=ORES_TRIGGER_REGISTERED_SCORE, \
+                                  min_edits:int=ORES_TRIGGER_REGISTERED_EDITS) -> None:
     filt = (unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_user'].notna())
     fields = ['rc_id', 'actor_name', 'oresc_damaging']
 
@@ -217,7 +218,7 @@ def dump_ores_worklist_registered(unpatrolled_changes:pd.DataFrame, min_ores_sco
 
 
 def dump_items_with_many_revisions(unpatrolled_changes:pd.DataFrame, \
-                                   max_num_title:int=None) -> None:
+                                   max_num_title:int=MAX_QID_NUM) -> None:
     if max_num_title is None:
         filt = (unpatrolled_changes['rc_patrolled']==0)
     else:
@@ -246,7 +247,7 @@ def dump_users_with_many_creations(unpatrolled_changes:pd.DataFrame) -> None:
 
 
 def dump_highly_used_items(unpatrolled_changes:pd.DataFrame, wdcm_toplist:pd.DataFrame, \
-                           min_entity_usage_count:int=500) -> None:
+                           min_entity_usage_count:int=MIN_ENTITY_USAGE) -> None:
     filt = (unpatrolled_changes['rc_patrolled']==0)
     toplist_unpatrolled_changes = unpatrolled_changes.loc[filt].merge(
         right=wdcm_toplist.loc[wdcm_toplist['entity_usage_count']>=min_entity_usage_count],

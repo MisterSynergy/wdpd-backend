@@ -10,6 +10,7 @@ logging.config.fileConfig('./logging.conf')
 import wdpd.query as query
 import wdpd.plot as plot
 import wdpd.dump as dump
+from wdpd.config import DEBUG, PLOT_WINDOW_DAYS
 from wdpd.helper import dump_update_timestamp, get_actions, init_directories, df_info
 
 
@@ -21,7 +22,6 @@ def main() -> None:
 
     #### Aux variables
     start_timestamp = time()
-    debugging = False # True: adds some dataframe information to logfile
     actions=get_actions()
     init_directories()
 
@@ -39,34 +39,23 @@ def main() -> None:
     patrol_progress = query.compile_patrol_progress(unpatrolled_changes, top_patrollers)
 
     #### debugging
-    if debugging is True:
+    if DEBUG is True:
         dataframes = [unpatrolled_changes, change_tags, ores_scores, top_patrollers, wdcm_toplist]
         for dataframe in dataframes:
             df_info(dataframe)
 
     #### plot variables
     LOG.info('Start plotting data')
-    plot_window_days = 28
-    filter_window = (unpatrolled_changes['time']>=pd.Timestamp.today().floor('D')-pd.to_timedelta(f'{plot_window_days:d} days')) \
+    filter_window = (unpatrolled_changes['time']>=pd.Timestamp.today().floor('D')-pd.to_timedelta(f'{PLOT_WINDOW_DAYS:d} days')) \
         & (unpatrolled_changes['time']<pd.Timestamp.today().floor('D'))
-    xticks_window = [ pd.Timestamp.today().floor('D') - pd.to_timedelta(f'{days:d} days') for days in range(28, -1, -7) ]
-    xticklabels_window = [ pd.Timestamp.strftime(pd.Timestamp.today().floor('D') - pd.to_timedelta(f'{days:d} days'), '%Y-%m-%d') for days in range(28, -1, -7) ]
+    xticks_window = [ pd.Timestamp.today().floor('D') - pd.to_timedelta(f'{days:d} days') for days in range(PLOT_WINDOW_DAYS, -1, -7) ]
+    xticklabels_window = [ pd.Timestamp.strftime(pd.Timestamp.today().floor('D') - pd.to_timedelta(f'{days:d} days'), '%Y-%m-%d') for days in range(PLOT_WINDOW_DAYS, -1, -7) ]
 
     plot_params:plot.PlotParamsDict = {
-        'plot_window_days' : plot_window_days,
         'filter_window' : filter_window,
         'xticks_window' : xticks_window,
         'xticklabels_window' : xticklabels_window,
-        'plot_path' : f'{expanduser("~")}/plots/',
-        'figsize_standard' : (6, 4),
-        'figsize_tall' : (6, 8),
-        'figsize_wide' : (9, 4),
-        'figsize_heatmap' : (6, 4.4),
-        'qid_bin_size' : 1000000,
-        'qid_max' : 120000000
     }
-
-    ores_models = [ 'oresc_damaging', 'oresc_goodfaith' ]
 
     #### Plotting
     ymax = plot.plot_edits_by_date(unpatrolled_changes, plot_params)
@@ -84,28 +73,27 @@ def main() -> None:
     # technical edit characteristics
     plot.plot_unpatrolled_actions_by_date(unpatrolled_changes, plot_params)
     plot.plot_reverted_by_date(unpatrolled_changes, change_tags, plot_params)
-    plot.plot_qid_bin_by_revisions(unpatrolled_changes, plot_params)
-    plot.plot_qid_bin_by_item(unpatrolled_changes, plot_params)
+    plot.plot_qid_bin_by_revisions(unpatrolled_changes)
+    plot.plot_qid_bin_by_item(unpatrolled_changes)
 
     # editorial edit characteristics
     plot.plot_broad_action_by_date(unpatrolled_changes, plot_params)
     plot.plot_broad_action_by_patrol_status(unpatrolled_changes, plot_params)
-    plot.plot_language_by_patrol_status(unpatrolled_changes, plot_params, actions['terms'])
-    plot.plot_property_by_patrol_status(unpatrolled_changes, plot_params, actions['allclaims'])
-    plot.plot_sitelink_by_patrol_status(unpatrolled_changes, plot_params, actions['allsitelinks'])
+    plot.plot_language_by_patrol_status(unpatrolled_changes, actions['terms'])
+    plot.plot_property_by_patrol_status(unpatrolled_changes, actions['allclaims'])
+    plot.plot_sitelink_by_patrol_status(unpatrolled_changes, actions['allsitelinks'])
     plot.plot_other_actions_by_patrol_status(
         unpatrolled_changes,
-        plot_params,
         actions['editentity']+actions['linktitles']+actions['merge']+actions['revert']+actions['none']
     )
 
     # ORES correlation histograms
-    plot.plot_ores_hist_by_editor_type(unpatrolled_changes, plot_params, ores_models)
-    plot.plot_ores_hist_by_action(unpatrolled_changes, plot_params, ores_models)
-    plot.plot_ores_hist_by_reverted(unpatrolled_changes, plot_params, ores_models)
-    plot.plot_ores_hist_by_language(unpatrolled_changes, plot_params, ores_models, actions['terms'])
-    plot.plot_ores_hist_by_term_type(unpatrolled_changes, plot_params, ores_models)
-    plot.plot_ores_heatmaps(unpatrolled_changes, plot_params)
+    plot.plot_ores_hist_by_editor_type(unpatrolled_changes)
+    plot.plot_ores_hist_by_action(unpatrolled_changes)
+    plot.plot_ores_hist_by_reverted(unpatrolled_changes)
+    plot.plot_ores_hist_by_language(unpatrolled_changes, actions['terms'])
+    plot.plot_ores_hist_by_term_type(unpatrolled_changes)
+    plot.plot_ores_heatmaps(unpatrolled_changes)
 
     # worklist
     plot.plot_remaining_by_date(unpatrolled_changes, plot_params)
@@ -126,11 +114,11 @@ def main() -> None:
     dump.dump_worklist(unpatrolled_changes, filt_all, 'all')
     dump.dump_worklist(unpatrolled_changes, filt_suggested, 'suggested-edit')
 
-    dump.dump_ores_worklist_unregistered(unpatrolled_changes, 0.9, 10)
-    dump.dump_ores_worklist_registered(unpatrolled_changes, 0.7, 10)
-    dump.dump_items_with_many_revisions(unpatrolled_changes, 107000000)
+    dump.dump_ores_worklist_unregistered(unpatrolled_changes)
+    dump.dump_ores_worklist_registered(unpatrolled_changes)
+    dump.dump_items_with_many_revisions(unpatrolled_changes)
     dump.dump_users_with_many_creations(unpatrolled_changes)
-    dump.dump_highly_used_items(unpatrolled_changes, wdcm_toplist, 500)
+    dump.dump_highly_used_items(unpatrolled_changes, wdcm_toplist)
     dump.term_dump_processor(unpatrolled_changes, actions['terms'])
     dump.term_in_editentity_dump_processor(unpatrolled_changes)
     dump.term_in_editentity_create_dump_processor(unpatrolled_changes)
@@ -146,7 +134,7 @@ def main() -> None:
 
     #### Patrol progress statistics
     dump.make_all_patrol_progress_stats(patrol_progress)
-    plot.make_all_patrol_progress_stats(patrol_progress, plot_params)
+    plot.make_all_patrol_progress_stats(patrol_progress)
 
     #### Not ns0
     dump.make_not_ns0_stats(unpatrolled_changes_not_ns0, translation_pages)

@@ -1,13 +1,13 @@
 from io import StringIO
 import logging
 from os import mkdir, remove
-from os.path import expanduser, isdir, join
+from os.path import isdir
 from time import perf_counter
 
 import pandas as pd
 import requests
 
-from .config import WDQS_ENDPOINT, USER_AGENT
+from .config import WDQS_ENDPOINT, USER_AGENT, PLOTPATH, DATAPATH, DUMP_UPDATE_FILE
 
 
 LOG = logging.getLogger(__name__)
@@ -44,16 +44,16 @@ def wdqs_query(query:str) -> pd.DataFrame:
         )
     )
 
-    LOG.info(f'Queried WDQS to dataframe; query time {t_query_end - t_query_start}')
+    LOG.info(f'Queried WDQS to dataframe; query time {t_query_end - t_query_start:.1f} sec')
 
     return df
 
 
 def dump_update_timestamp(timestmp:float) -> None:
-    update_file = f'{expanduser("~")}/data/update.txt'
-    with open(update_file, mode='w', encoding='utf8') as file_handle:
-        file_handle.write(str(round(timestmp)))
-    LOG.info(f'dumped update timestamp {round(timestmp)}')
+    with open(DUMP_UPDATE_FILE, mode='w', encoding='utf8') as file_handle:
+        file_handle.write(f'{timestmp:.0f}')
+
+    LOG.info(f'dumped update timestamp {timestmp:.0f}')
 
 
 def get_actions() -> dict[str, list[str]]:
@@ -95,14 +95,14 @@ def get_actions() -> dict[str, list[str]]:
 
 def init_directories() -> None:
     required_directories = [
-        f'{expanduser("~")}/data',
-        f'{expanduser("~")}/plots'
+        DATAPATH,
+        PLOTPATH
     ]
 
     for required_directory in required_directories:
         if isdir(required_directory):
             continue
-        mkdir(join(expanduser('~'), required_directory))
+        mkdir(required_directory)
 
     LOG.info('Initialized directories')
 

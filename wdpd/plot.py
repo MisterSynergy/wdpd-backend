@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from numpy import array as np_array, amax
 import pandas as pd
 
+from .config import PLOT_WINDOW_DAYS, PLOTPATH, FIGSIZE_STANDARD, FIGSIZE_TALL, FIGSIZE_WIDE, FIGSIZE_HEATMAP, \
+    QID_BIN_SIZE, QID_BIN_MAX, ORES_MODELS
 from .helper import delete_file, wdqs_query
 
 
@@ -16,17 +18,9 @@ LOG = logging.getLogger(__name__)
 
 
 class PlotParamsDict(TypedDict):
-    plot_window_days : int
     filter_window : pd.Series
     xticks_window : list[pd.Timestamp]
     xticklabels_window : list[str]
-    plot_path : str
-    figsize_standard : tuple[float, float]
-    figsize_tall : tuple[float, float]
-    figsize_wide : tuple[float, float]
-    figsize_heatmap : tuple[float, float]
-    qid_bin_size : int
-    qid_max : int
 
 
 class Plot:
@@ -34,7 +28,7 @@ class Plot:
         self.filename = filename
         self.getfig = getfig
         if figsize is None:
-            figsize = (6.4, 4.8)
+            figsize = FIGSIZE_STANDARD
         self.fig, self.ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
         self.svg = svg
 
@@ -56,9 +50,9 @@ class Plot:
 
 
 def plot_edits_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> int:
-    filename = f'{plot_params.get("plot_path")}editsByDate'
+    filename = f'{PLOTPATH}editsByDate'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
@@ -82,16 +76,16 @@ def plot_edits_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
 
 
 def plot_edits_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ymax:Optional[int]=None) -> None:
-    filename = f'{plot_params.get("plot_path")}editsByWeekday'
+    filename = f'{PLOTPATH}editsByWeekday'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.weekday,
                 unpatrolled_changes['actor_user'].isna()
             ]
         ).count().div(
-            other=plot_params.get('plot_window_days', 28)/7,
+            other=PLOT_WINDOW_DAYS / 7,
             axis=0
         )
         tmp.groupby(level=0).sum().plot(kind='line', grid=True, ax=ax)
@@ -109,16 +103,16 @@ def plot_edits_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:PlotPara
 
 
 def plot_edits_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}editsByHour'
+    filename = f'{PLOTPATH}editsByHour'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.hour,
                 unpatrolled_changes['actor_user'].isna()
             ]
         ).count().div(
-            other=plot_params.get('plot_window_days', 28),
+            other=PLOT_WINDOW_DAYS,
             axis=0
         )
         tmp.groupby(level=0).sum().plot(kind='line', grid=True, ax=ax)
@@ -126,7 +120,7 @@ def plot_edits_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
 
         ax.legend(['total unpatrolled changes', 'by registered users', 'by IP users'])
         ax.set_xlabel('hour of day (UTC)')
-        ax.set_ylabel(f'number of changes per hour ({plot_params.get("plot_window_days", 28):d}d avg)')
+        ax.set_ylabel(f'number of changes per hour ({PLOT_WINDOW_DAYS}d avg)')
         ax.set_xticks(range(0, 25, 3))
         _, _, _, ymax = ax.axis()
         ax.set(xlim=(0, 24), ylim=(0, ymax))
@@ -135,9 +129,9 @@ def plot_edits_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
 
 
 def plot_patrol_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> int:
-    filename = f'{plot_params.get("plot_path")}patrolstatusByDate'
+    filename = f'{PLOTPATH}patrolstatusByDate'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
@@ -160,16 +154,16 @@ def plot_patrol_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plo
 
 
 def plot_patrol_status_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ymax:Optional[int]=None) -> None:
-    filename = f'{plot_params.get("plot_path")}patrolstatusByWeekday'
+    filename = f'{PLOTPATH}patrolstatusByWeekday'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.weekday,
                 unpatrolled_changes['rc_patrolled']
             ]
         ).count().div(
-            other=plot_params.get('plot_window_days', 28)/7,
+            other=PLOT_WINDOW_DAYS / 7,
             axis=1
         )
         tmp.unstack(level=1).plot(kind='line', grid=True, ax=ax)
@@ -186,23 +180,23 @@ def plot_patrol_status_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:
 
 
 def plot_patrol_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}patrolstatusByHour'
+    filename = f'{PLOTPATH}patrolstatusByHour'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.hour,
                 unpatrolled_changes['rc_patrolled']
             ]
         ).count().div(
-            other=plot_params.get('plot_window_days', 28),
+            other=PLOT_WINDOW_DAYS,
             axis=1
         )
         tmp.unstack(level=1).plot(kind='line', grid=True, ax=ax)
 
         ax.legend(['still unpatrolled', 'manually patrolled'])
         ax.set_xlabel('hour of day (UTC)')
-        ax.set_ylabel(f'number of changes per hour ({plot_params.get("plot_window_days", 28):d}d avg)')
+        ax.set_ylabel(f'number of changes per hour ({PLOT_WINDOW_DAYS}d avg)')
         ax.set_xticks(range(0, 25, 3))
         _, _, _, ymax = ax.axis()
         ax.set(xlim=(0, 24), ylim=(0, ymax))
@@ -211,9 +205,9 @@ def plot_patrol_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:Plo
 
 
 def plot_editor_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> int:
-    filename = f'{plot_params.get("plot_path")}editorstatusByDate'
+    filename = f'{PLOTPATH}editorstatusByDate'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id', 'actor_name']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
@@ -237,16 +231,16 @@ def plot_editor_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plo
 
 
 def plot_editor_status_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ymax:Optional[int]=None) -> None:
-    filename = f'{plot_params.get("plot_path")}editorstatusByWeekday'
+    filename = f'{PLOTPATH}editorstatusByWeekday'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id', 'actor_name']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.weekday,
                 unpatrolled_changes['actor_user'].notna()
             ]
         )['actor_name'].nunique().div(
-            other=plot_params.get('plot_window_days', 28)/7,
+            other=PLOT_WINDOW_DAYS / 7,
             axis=0
         )
         tmp.groupby(level=0).sum().plot(kind='line', grid=True, ax=ax)
@@ -264,16 +258,16 @@ def plot_editor_status_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:
 
 
 def plot_editor_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}editorstatusByHour'
+    filename = f'{PLOTPATH}editorstatusByHour'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id', 'actor_name']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.hour,
                 unpatrolled_changes['actor_user'].notna()
             ]
         )['actor_name'].nunique().div(
-            other=plot_params.get('plot_window_days', 28),
+            other=PLOT_WINDOW_DAYS,
             axis=0
         )
         tmp.groupby(level=0).sum().plot(kind='line', grid=True, ax=ax)
@@ -281,7 +275,7 @@ def plot_editor_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:Plo
 
         ax.legend(['all types', '# of IPs', '# of registered users'])
         ax.set_xlabel('hour of day (UTC)')
-        ax.set_ylabel(f'number of editors per hour ({plot_params.get("plot_window_days", 28):d}d avg)')
+        ax.set_ylabel(f'number of editors per hour ({PLOT_WINDOW_DAYS}d avg)')
         ax.set_xticks(range(0, 25, 3))
         _, _, _, ymax = ax.axis()
         ax.set(xlim=(0, 24), ylim=(0, ymax))
@@ -290,9 +284,9 @@ def plot_editor_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:Plo
 
 
 def plot_unpatrolled_actions_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}actionsByDate'
+    filename = f'{PLOTPATH}actionsByDate'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
@@ -314,11 +308,11 @@ def plot_unpatrolled_actions_by_date(unpatrolled_changes:pd.DataFrame, plot_para
 
 
 def plot_reverted_by_date(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}revertedByDate'
+    filename = f'{PLOTPATH}revertedByDate'
 
     undone = ['mw-reverted']
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp_rev_1 = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id', 'time']].merge(
             right=change_tags.loc[(change_tags['ctd_name'].isin(undone)), ['rc_id', 'ctd_name']],
             on='rc_id'
@@ -341,13 +335,13 @@ def plot_reverted_by_date(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataF
     LOG.info('Plotted reverted edits by date')
 
 
-def plot_qid_bin_by_revisions(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}qidBinRev'
+def plot_qid_bin_by_revisions(unpatrolled_changes:pd.DataFrame) -> None:
+    filename = f'{PLOTPATH}qidBinRev'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
-        tmp_unpatrolled = unpatrolled_changes.loc[(unpatrolled_changes['rc_patrolled']==0 & unpatrolled_changes['reverted'].isna()), ['num_title']].groupby(by=unpatrolled_changes['num_title'].floordiv(other=plot_params.get('qid_bin_size'))).count()
-        tmp_patrolled = unpatrolled_changes.loc[(unpatrolled_changes['rc_patrolled']==1 & unpatrolled_changes['reverted'].isna()), ['num_title']].groupby(by=unpatrolled_changes['num_title'].floordiv(other=plot_params.get('qid_bin_size'))).count()
-        tmp_reverted =  unpatrolled_changes.loc[~unpatrolled_changes['reverted'].isna(), ['num_title']].groupby(by=unpatrolled_changes['num_title'].floordiv(other=plot_params.get('qid_bin_size'))).count()
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
+        tmp_unpatrolled = unpatrolled_changes.loc[(unpatrolled_changes['rc_patrolled']==0 & unpatrolled_changes['reverted'].isna()), ['num_title']].groupby(by=unpatrolled_changes['num_title'].floordiv(other=QID_BIN_SIZE)).count()
+        tmp_patrolled = unpatrolled_changes.loc[(unpatrolled_changes['rc_patrolled']==1 & unpatrolled_changes['reverted'].isna()), ['num_title']].groupby(by=unpatrolled_changes['num_title'].floordiv(other=QID_BIN_SIZE)).count()
+        tmp_reverted =  unpatrolled_changes.loc[~unpatrolled_changes['reverted'].isna(), ['num_title']].groupby(by=unpatrolled_changes['num_title'].floordiv(other=QID_BIN_SIZE)).count()
         tmp_unpatrolled.rename(columns={'num_title' : 'cnt_unpatrolled'}, inplace=True)
         tmp_patrolled.rename(columns={'num_title' : 'cnt_patrolled'}, inplace=True)
         tmp_reverted.rename(columns={'num_title' : 'cnt_reverted'}, inplace=True)
@@ -357,37 +351,37 @@ def plot_qid_bin_by_revisions(unpatrolled_changes:pd.DataFrame, plot_params:Plot
         ax.legend(['still unpatrolled', 'manually patrolled', 'reverted'])
         ax.set_xlabel('Q-ID bin (1M item bins)')
         ax.set_ylabel('number of changes')
-        ax.set_xticks([0, 20, 40, 60, 80, 100])
-        ax.set_xticklabels(['Q0', 'Q20M', 'Q40M', 'Q60M', 'Q80M', 'Q100M'], rotation=0)
+        ax.set_xticks([0, 20, 40, 60, 80, 100, 120])
+        ax.set_xticklabels(['Q0', 'Q20M', 'Q40M', 'Q60M', 'Q80M', 'Q100M', 'Q120M'], rotation=0)
         #xmin, xmax, ymin, ymax = ax.axis()
-        ax.set(xlim=(-0.5, plot_params.get('qid_max', 200000000)/plot_params.get('qid_bin_size', 1000000)-0.5))
+        ax.set(xlim=(-0.5, QID_BIN_MAX/QID_BIN_SIZE+0.5))
 
     LOG.info('Plotted QID bins by revisions')
 
 
-def plot_qid_bin_by_item(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}qidBinQid'
+def plot_qid_bin_by_item(unpatrolled_changes:pd.DataFrame) -> None:
+    filename = f'{PLOTPATH}qidBinQid'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp =  unpatrolled_changes[['num_title']].drop_duplicates().groupby(
-            by=unpatrolled_changes['num_title'].floordiv(other=plot_params.get('qid_bin_size'))
+            by=unpatrolled_changes['num_title'].floordiv(other=QID_BIN_SIZE)
         ).count()
         tmp.plot.bar(stacked=True, grid=True, ax=ax, width=1)
 
         ax.legend(['items with unpatrolled changes'])
         ax.set_xlabel('Q-ID bin (1M item bins)')
         ax.set_ylabel('number of items with changes')
-        ax.set_xticks([0, 20, 40, 60, 80, 100])
-        ax.set_xticklabels(['Q0', 'Q20M', 'Q40M', 'Q60M', 'Q80M', 'Q100M'], rotation=0)
-        ax.set(xlim=(-0.5, plot_params.get('qid_max', 200000000)/plot_params.get('qid_bin_size', 1000000)-0.5))
+        ax.set_xticks([0, 20, 40, 60, 80, 100, 120])
+        ax.set_xticklabels(['Q0', 'Q20M', 'Q40M', 'Q60M', 'Q80M', 'Q100M', 'Q120M'], rotation=0)
+        ax.set(xlim=(-0.5, QID_BIN_MAX/QID_BIN_SIZE+0.5))
 
     LOG.info('Plotted QID bins by items')
 
 
 def plot_broad_action_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}broadActionByDate'
+    filename = f'{PLOTPATH}broadActionByDate'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_wide')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_WIDE) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
@@ -406,9 +400,9 @@ def plot_broad_action_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plot
 
 
 def plot_broad_action_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}broadActionByPatrolStatus'
+    filename = f'{PLOTPATH}broadActionByPatrolStatus'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['editsummary-magic-action-broad'],
@@ -431,10 +425,10 @@ def plot_broad_action_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_pa
     LOG.info('Plotted broad action by patrol status')
 
 
-def plot_language_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, termactions:list[str]) -> None: # termactions=actions['terms']
-    filename = f'{plot_params.get("plot_path")}languageByPatrolStatus'
+def plot_language_by_patrol_status(unpatrolled_changes:pd.DataFrame, termactions:list[str]) -> None: # termactions=actions['terms']
+    filename = f'{PLOTPATH}languageByPatrolStatus'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_tall')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_TALL) as ax:
         tmp = unpatrolled_changes.loc[unpatrolled_changes['editsummary-magic-action'].isin(termactions), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['editsummary-magic-param1'],
@@ -466,10 +460,10 @@ def plot_language_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params
     LOG.info('Plotted languages by patrol status')
 
 
-def plot_property_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, claimactions:list[str]) -> None: # claimactions=actions['allclaims']
-    filename = f'{plot_params.get("plot_path")}propertyByPatrolStatus'
+def plot_property_by_patrol_status(unpatrolled_changes:pd.DataFrame, claimactions:list[str]) -> None: # claimactions=actions['allclaims']
+    filename = f'{PLOTPATH}propertyByPatrolStatus'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_tall')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_TALL) as ax:
         tmp = unpatrolled_changes.loc[unpatrolled_changes['editsummary-magic-action'].isin(claimactions), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['editsummary-free-property'],
@@ -512,10 +506,10 @@ def plot_property_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params
     LOG.info('Plotted properties by patrol status')
 
 
-def plot_sitelink_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, sitelinkactions:list[str]) -> None: # sitelinkactions=actions['sitelink'] or actions['allsitelinks']
-    filename = f'{plot_params.get("plot_path")}sitelinkByPatrolStatus'
+def plot_sitelink_by_patrol_status(unpatrolled_changes:pd.DataFrame, sitelinkactions:list[str]) -> None: # sitelinkactions=actions['sitelink'] or actions['allsitelinks']
+    filename = f'{PLOTPATH}sitelinkByPatrolStatus'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_tall')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_TALL) as ax:
         tmp = unpatrolled_changes.loc[unpatrolled_changes['editsummary-magic-action'].isin(sitelinkactions), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['editsummary-magic-param1'],
@@ -547,10 +541,10 @@ def plot_sitelink_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params
     LOG.info('Plotted sitelinks by patrol status')
 
 
-def plot_other_actions_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, otheractions:list[str]) -> None: # otheractions=actions['editentity'] + actions['linktitles'] + actions['merge'] + actions['revert'] + actions['none']
-    filename = f'{plot_params.get("plot_path")}otherActionsByPatrolStatus'
+def plot_other_actions_by_patrol_status(unpatrolled_changes:pd.DataFrame, otheractions:list[str]) -> None: # otheractions=actions['editentity'] + actions['linktitles'] + actions['merge'] + actions['revert'] + actions['none']
+    filename = f'{PLOTPATH}otherActionsByPatrolStatus'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[unpatrolled_changes['editsummary-magic-action'].isin(otheractions), ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['editsummary-magic-action-broad'],
@@ -568,9 +562,9 @@ def plot_other_actions_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_p
 
 
 def plot_remaining_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}remainingByDate'
+    filename = f'{PLOTPATH}remainingByDate'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         tmp = unpatrolled_changes.loc[plot_params.get('filter_window') & (unpatrolled_changes['rc_patrolled']==0), ['rc_id', 'actor_user', 'rc_patrolled']].groupby(
             by=unpatrolled_changes['time'].dt.date
         ).count()
@@ -591,10 +585,10 @@ def plot_remaining_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotPar
     LOG.info('Plotted remaining workload by date')
 
 
-def plot_ores_hist(unpatrolled_changes:pd.DataFrame, filt:pd.Series, grouper:pd.Series, ores_model:str, filenamepart:str, plot_params:PlotParamsDict, legend:Optional[list[str]]=None, titleprefix:str='') -> None:
-    filename = f'{plot_params.get("plot_path")}ORES-hist-{filenamepart}'
+def plot_ores_hist(unpatrolled_changes:pd.DataFrame, filt:pd.Series, grouper:pd.Series, ores_model:str, filenamepart:str, legend:Optional[list[str]]=None, titleprefix:str='') -> None:
+    filename = f'{PLOTPATH}ORES-hist-{filenamepart}'
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard')) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as ax:
         ores_notna_filter = (unpatrolled_changes['oresc_damaging'].notna()) & (unpatrolled_changes['oresc_goodfaith'].notna())
         if filt is None:
             if grouper is None:
@@ -625,72 +619,67 @@ def plot_ores_hist(unpatrolled_changes:pd.DataFrame, filt:pd.Series, grouper:pd.
     LOG.info('Plotted ORES histogram')
 
 
-def plot_ores_hist_by_editor_type(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str]) -> None:
-    for ores_model in ores_models:
+def plot_ores_hist_by_editor_type(unpatrolled_changes:pd.DataFrame) -> None:
+    for ores_model in ORES_MODELS:
         plot_ores_hist(
             unpatrolled_changes,
             None,
             unpatrolled_changes['actor_user'].notna(),
             ores_model,
             f'{ores_model[6:]}AndEditorType',
-            plot_params,
             legend=['IP users', 'new registered users']
         )
 
         LOG.info(f'Plotted ORES histogram by editor type for model {ores_model}')
 
 
-def plot_ores_hist_by_action(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str]) -> None:
-    for ores_model in ores_models:
+def plot_ores_hist_by_action(unpatrolled_changes:pd.DataFrame) -> None:
+    for ores_model in ORES_MODELS:
         plot_ores_hist(
             unpatrolled_changes,
             unpatrolled_changes['actor_user'].notna(),
             'editsummary-magic-action-broad',
             ores_model,
             f'{ores_model[6:]}AndActionRegistered',
-            plot_params,
             titleprefix='new registered users; '
         )
 
         LOG.info(f'Plotted ORES histogram by action for model {ores_model} and registered users')
 
-    for ores_model in ores_models:
+    for ores_model in ORES_MODELS:
         plot_ores_hist(
             unpatrolled_changes,
             unpatrolled_changes['actor_user'].isna(),
             'editsummary-magic-action-broad',
             ores_model,
             f'{ores_model[6:]}AndActionAnonymous',
-            plot_params,
             titleprefix='IP users; '
         )
 
         LOG.info(f'Plotted ORES histogram by action for model {ores_model} and unregistered users')
 
 
-def plot_ores_hist_by_reverted(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str]) -> None:
-    for ores_model in ores_models:
+def plot_ores_hist_by_reverted(unpatrolled_changes:pd.DataFrame) -> None:
+    for ores_model in ORES_MODELS:
         plot_ores_hist(
             unpatrolled_changes,
             unpatrolled_changes['actor_user'].notna(),
             unpatrolled_changes['reverted'].notna(),
             ores_model,
             f'{ores_model[6:]}AndRevertedRegistered',
-            plot_params,
             legend=['not reverted', 'reverted'],
             titleprefix='new registered users; '
         )
 
         LOG.info(f'Plotted ORES histogram by revert status for model {ores_model} and registered users')
 
-    for ores_model in ores_models:
+    for ores_model in ORES_MODELS:
         plot_ores_hist(
             unpatrolled_changes,
             unpatrolled_changes['actor_user'].isna(),
             unpatrolled_changes['reverted'].notna(),
             ores_model,
             f'{ores_model[6:]}AndRevertedAnonymous',
-            plot_params,
             legend=['not reverted', 'reverted'],
             titleprefix='IP users; '
         )
@@ -698,66 +687,62 @@ def plot_ores_hist_by_reverted(unpatrolled_changes:pd.DataFrame, plot_params:Plo
         LOG.info(f'Plotted ORES histogram by revert status for model {ores_model} and unregistered users')
 
 
-def plot_ores_hist_by_language(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str], termactions:list[str]) -> None:
+def plot_ores_hist_by_language(unpatrolled_changes:pd.DataFrame, termactions:list[str]) -> None:
     top_languages = unpatrolled_changes.loc[unpatrolled_changes['editsummary-magic-action'].isin(termactions), 'editsummary-magic-param1'].value_counts().head(10).index.to_list()
 
-    for ores_model in ores_models:
+    for ores_model in ORES_MODELS:
         plot_ores_hist(
             unpatrolled_changes,
             (unpatrolled_changes['actor_user'].notna()) & (unpatrolled_changes['editsummary-magic-action'].isin(termactions)) & (unpatrolled_changes['editsummary-magic-param1'].isin(top_languages)),
             'editsummary-magic-param1',
             ores_model,
             f'{ores_model[6:]}AndLanguageRegistered',
-            plot_params,
             titleprefix='new registered users; '
         )
 
         LOG.info(f'Plotted ORES histogram by language for model {ores_model} and registered users')
 
-    for ores_model in ores_models:
+    for ores_model in ORES_MODELS:
         plot_ores_hist(
             unpatrolled_changes,
             (unpatrolled_changes['actor_user'].isna()) & (unpatrolled_changes['editsummary-magic-action'].isin(termactions)) & (unpatrolled_changes['editsummary-magic-param1'].isin(top_languages)),
             'editsummary-magic-param1',
             ores_model,
             f'{ores_model[6:]}AndLanguageAnonymous',
-            plot_params,
             titleprefix='IP users; '
         )
 
         LOG.info(f'Plotted ORES histogram by language for model {ores_model} and unregistered users')
 
 
-def plot_ores_hist_by_term_type(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, ores_models:list[str]) -> None:
-    for ores_model in ores_models:
+def plot_ores_hist_by_term_type(unpatrolled_changes:pd.DataFrame) -> None:
+    for ores_model in ORES_MODELS:
         plot_ores_hist(
             unpatrolled_changes,
             (unpatrolled_changes['actor_user'].notna()) & (unpatrolled_changes['editsummary-magic-action-broad'].isin(['label', 'description', 'alias', 'anyterms'])),
             'editsummary-magic-action-broad',
             ores_model,
             f'{ores_model[6:]}AndTermtypeRegistered',
-            plot_params,
             titleprefix='new registered users; '
         )
 
         LOG.info(f'Plotted ORES histogram by term type for model {ores_model} and registered users')
 
-    for ores_model in ores_models:
+    for ores_model in ORES_MODELS:
         plot_ores_hist(
             unpatrolled_changes,
             (unpatrolled_changes['actor_user'].isna()) & (unpatrolled_changes['editsummary-magic-action-broad'].isin(['label', 'description', 'alias', 'anyterms'])),
             'editsummary-magic-action-broad',
             ores_model,
             f'{ores_model[6:]}AndTermtypeAnonymous',
-            plot_params,
             titleprefix='IP users; '
         )
 
         LOG.info(f'Plotted ORES histogram by term type for model {ores_model} and unregistered users')
 
 
-def plot_ores_heatmap(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict, filenamepart:str, filt:pd.Series, titleprefix:str='') -> None:
-    filename = f'{plot_params.get("plot_path")}ORES-heatmap-{filenamepart}'
+def plot_ores_heatmap(unpatrolled_changes:pd.DataFrame, filenamepart:str, filt:pd.Series, titleprefix:str='') -> None:
+    filename = f'{PLOTPATH}ORES-heatmap-{filenamepart}'
 
     cnt = len(unpatrolled_changes.loc[filt & (unpatrolled_changes['oresc_damaging'].notna()) & (unpatrolled_changes['oresc_goodfaith'].notna())].index)
 
@@ -765,7 +750,7 @@ def plot_ores_heatmap(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDi
     goodfaith = np_array(unpatrolled_changes.loc[filt & (unpatrolled_changes['oresc_damaging'].notna()) & (unpatrolled_changes['oresc_goodfaith'].notna()), 'oresc_goodfaith'])
 
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_heatmap'), getfig=True) as (fig, ax):
+    with Plot(filename=filename, figsize=FIGSIZE_HEATMAP, getfig=True) as (fig, ax):
         counts, _, _, img = ax.hist2d(
             damaging,
             goodfaith,
@@ -786,10 +771,9 @@ def plot_ores_heatmap(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDi
     LOG.info('Plotted ORES heatmap')
 
 
-def plot_ores_heatmaps(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsDict) -> None:
+def plot_ores_heatmaps(unpatrolled_changes:pd.DataFrame) -> None:
     plot_ores_heatmap(
         unpatrolled_changes,
-        plot_params,
         'Registered',
         filt=(unpatrolled_changes['actor_user'].notna()),
         titleprefix='new registered users; '
@@ -798,7 +782,6 @@ def plot_ores_heatmaps(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
 
     plot_ores_heatmap(
         unpatrolled_changes,
-        plot_params,
         'Anonymous',
         filt=(unpatrolled_changes['actor_user'].isna()),
         titleprefix='IP users; '
@@ -840,9 +823,8 @@ def get_xticks(maximum:int) -> int:
         return 48
 
 
-def make_patrol_progress_plot(patrol_progress:pd.DataFrame, language:str, \
-                              plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}progress_by_lang/patrol-progress_{language}'
+def make_patrol_progress_plot(patrol_progress:pd.DataFrame, language:str) -> None:
+    filename = f'{PLOTPATH}progress_by_lang/patrol-progress_{language}'
 
     filt = (patrol_progress['editsummary-magic-param1']==language)
 
@@ -850,7 +832,7 @@ def make_patrol_progress_plot(patrol_progress:pd.DataFrame, language:str, \
     ticks = get_xticks(max_patrol_time)
     bins = get_bins(max_patrol_time)
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard'), svg=False) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD, svg=False) as ax:
         try:
             patrol_progress.loc[filt, 'patrol_delay_hours'].hist(bins=bins, ax=ax)
         except ValueError:
@@ -866,9 +848,8 @@ def make_patrol_progress_plot(patrol_progress:pd.DataFrame, language:str, \
     LOG.info(f'Plotted patrol progress plot for language "{language}"')
 
 
-def make_patrol_progress_percentiles(patrol_progress:pd.DataFrame, language:str, \
-                                     plot_params:PlotParamsDict) -> None:
-    filename = f'{plot_params.get("plot_path")}progress_by_lang/patrol-progress-percentiles_{language}'
+def make_patrol_progress_percentiles(patrol_progress:pd.DataFrame, language:str) -> None:
+    filename = f'{PLOTPATH}progress_by_lang/patrol-progress-percentiles_{language}'
 
     filt = patrol_progress['editsummary-magic-param1']==language
 
@@ -881,7 +862,7 @@ def make_patrol_progress_percentiles(patrol_progress:pd.DataFrame, language:str,
     max_patrol_time = m_ceil(patrol_progress.loc[filt, 'patrol_delay_hours'].max())
     ticks = get_xticks(max_patrol_time)
 
-    with Plot(filename=filename, figsize=plot_params.get('figsize_standard'), svg=False) as ax:
+    with Plot(filename=filename, figsize=FIGSIZE_STANDARD, svg=False) as ax:
         ax.plot(values, percentiles, '+')
         ax.legend([ language ])
         ax.set_xlabel('patrol delay (hours)')
@@ -894,11 +875,11 @@ def make_patrol_progress_percentiles(patrol_progress:pd.DataFrame, language:str,
     LOG.info(f'Plotted patrol progress percentiles plot for language "{language}"')
 
 
-def make_all_patrol_progress_stats(patrol_progress:pd.DataFrame, plot_params:PlotParamsDict) -> None:
+def make_all_patrol_progress_stats(patrol_progress:pd.DataFrame) -> None:
 #   languages = list(patrol_progress['editsummary-magic-param1'].unique())
     languages = [ 'de', 'en', 'fr', 'es', 'it', 'ru' ]
 
-    existing_plots = glob(f'{plot_params.get("plot_path")}progress_by_lang/patrol-progress_*.png')
+    existing_plots = glob(f'{PLOTPATH}progress_by_lang/patrol-progress_*.png')
     for existing_plot in existing_plots:
         lang = existing_plot[58:-4].replace('_', ' ')
         if lang not in languages: # hacky
@@ -906,5 +887,5 @@ def make_all_patrol_progress_stats(patrol_progress:pd.DataFrame, plot_params:Plo
             delete_file(existing_plot.replace('/patrol-progress_', '/patrol-progress-percentiles_'))
 
     for language in languages:
-        make_patrol_progress_plot(patrol_progress, language, plot_params)
-        make_patrol_progress_percentiles(patrol_progress, language, plot_params)
+        make_patrol_progress_plot(patrol_progress, language)
+        make_patrol_progress_percentiles(patrol_progress, language)
