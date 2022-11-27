@@ -1,8 +1,9 @@
 import logging
 from json import JSONDecodeError
-from typing import Any
+from typing import Any, Optional
 
 import mariadb
+from numpy import int64 as np_int64
 import pandas as pd
 import requests
 
@@ -14,12 +15,12 @@ LOG = logging.getLogger(__name__)
 
 #### internal functions
 class Replica:
-    def __init__(self):
+    def __init__(self) -> None:
         self.replica = mariadb.connect(**REPLICA_PARAMS)
         self.cursor = self.replica.cursor(dictionary=True)
 
 
-    def __enter__(self):
+    def __enter__(self) -> mariadb.connection.cursor:
         return self.cursor
 
 
@@ -28,17 +29,20 @@ class Replica:
         self.replica.close()
 
 
-def _query_mediawiki(query:str) -> list[dict[str, Any]]:
+def _query_mediawiki(query:str, params:Optional[tuple[Any]]=None) -> list[dict[str, Any]]:
     with Replica() as cursor:
-        cursor.execute(query)
+        if params is None:
+            cursor.execute(query)
+        else:
+            cursor.execute(query, params)
         result = cursor.fetchall()
 
     return result
 
 
-def _query_mediawiki_to_dataframe(query:str, columns:dict[str, Any]) -> pd.DataFrame:
+def _query_mediawiki_to_dataframe(query:str, columns:dict[str, Any], params:Optional[tuple[Any]]=None) -> pd.DataFrame:
     df = pd.DataFrame(
-        data=_query_mediawiki(query),
+        data=_query_mediawiki(query, params),
         columns=columns.keys(),
         dtype=columns
     )
@@ -65,10 +69,11 @@ def _query_ores_model_ids(ores_model_name:str) -> list[int]:
 FROM
   ores_model
 WHERE
-  oresm_name='{ores_model_name}'
+  oresm_name=?
   AND oresm_is_current=1"""
+    params = ( ores_model_name, )
 
-    query_result = _query_mediawiki(sql)
+    query_result = _query_mediawiki(sql, params)
     ores_model_ids = [ int(row['oresm_id']) for row in query_result ]
 
     return ores_model_ids
@@ -196,7 +201,7 @@ def query_change_tags() -> pd.DataFrame:
     return change_tags
 
 
-def query_top_patrollers(min_timestamp:int) -> pd.DataFrame:
+def query_top_patrollers(min_timestamp:np_int64) -> pd.DataFrame:
     sql = f"""SELECT
       log_id,
       log_timestamp,
@@ -209,10 +214,12 @@ def query_top_patrollers(min_timestamp:int) -> pd.DataFrame:
       log_action='patrol'
       AND log_type='patrol'
       AND log_namespace=0
-      AND log_timestamp>={min_timestamp}
+      AND log_timestamp>=?
     ORDER BY
       log_timestamp ASC"""
-    query_result = _query_mediawiki(sql)
+    params = ( min_timestamp.item(), )  # .item() converts from np.int64 to int
+
+    query_result = _query_mediawiki(sql, params)
 
     top_patrollers = pd.DataFrame(
         data={
