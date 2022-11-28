@@ -3,7 +3,6 @@ from json import JSONDecodeError
 from typing import Any, Optional
 
 import mariadb
-from numpy import int64 as np_int64
 import pandas as pd
 import requests
 
@@ -40,17 +39,18 @@ def _query_mediawiki(query:str, params:Optional[tuple[Any]]=None) -> list[dict[s
     return result
 
 
-def _query_mediawiki_to_dataframe(query:str, columns:dict[str, Any], params:Optional[tuple[Any]]=None) -> pd.DataFrame:
+def _query_mediawiki_to_dataframe(query:str, params:Optional[tuple[Any]]=None) -> pd.DataFrame:
     df = pd.DataFrame(
         data=_query_mediawiki(query, params),
-        columns=columns.keys(),
-        dtype=columns
     )
 
     for column in df.columns:
         if not pd.api.types.is_string_dtype(df[column]):
             continue
-        df[column] = df[column].str.decode('utf8')
+        try:
+            df[column] = df[column].str.decode('utf8')
+        except AttributeError as exception:
+            LOG.warning(f'Cannot convert column {column} to string due to exception: {exception}')
 
     return df
 
@@ -111,36 +111,8 @@ def query_unpatrolled_changes() -> pd.DataFrame:
     WHERE
       rc_patrolled IN (0, 1)
       AND rc_namespace=0"""
-    query_result = _query_mediawiki(sql)
 
-    unpatrolled_changes = pd.DataFrame(
-        data={
-            'rc_id' : [ int(row['rc_id']) for row in query_result ],
-            'rc_timestamp' : [ int(row['rc_timestamp']) for row in query_result ],
-            'rc_title' : [ row['rc_title'].decode('utf8') for row in query_result ],
-            'rc_source' : [ row['rc_source'].decode('utf8') for row in query_result ],
-            'rc_patrolled' : [ int(row['rc_patrolled']) for row in query_result ],
-            'rc_new_len' : [ int(row['rc_new_len']) for row in query_result ],
-            'rc_old_len' : [ int(row['rc_old_len']) for row in query_result ],
-            'rc_this_oldid' : [ int(row['rc_this_oldid']) for row in query_result ],
-            'actor_user' : [ row['actor_user'] for row in query_result ],
-            'actor_name' : [ row['actor_name'].decode('utf8') for row in query_result ],
-            'comment_text' : [ row['comment_text'].decode('utf8') for row in query_result ],
-        },
-        columns=[
-            'rc_id',
-            'rc_timestamp',
-            'rc_title',
-            'rc_source',
-            'rc_patrolled',
-            'rc_new_len',
-            'rc_old_len',
-            'rc_this_oldid',
-            'actor_user',
-            'actor_name',
-            'comment_text'
-        ]
-    )
+    unpatrolled_changes = _query_mediawiki_to_dataframe(sql)
 
     try:
         unpatrolled_changes['time'] = pd.to_datetime(
@@ -181,27 +153,14 @@ def query_change_tags() -> pd.DataFrame:
       rc_patrolled IN (0, 1)
       AND rc_namespace=0
       AND ct_id IS NOT NULL"""
-    query_result = _query_mediawiki(sql)
-
-    change_tags = pd.DataFrame(
-        data={
-            'rc_id' : [ int(row['rc_id']) for row in query_result ],
-            'ct_id' : [ int(row['ct_id']) for row in query_result ],
-            'ctd_name' : [ row['ctd_name'].decode('utf8') for row in query_result ]
-        },
-        columns=[
-            'rc_id',
-            'ct_id',
-            'ctd_name'
-        ]
-    )
+    change_tags = _query_mediawiki_to_dataframe(sql)
 
     LOG.info('Queried change tags')
 
     return change_tags
 
 
-def query_top_patrollers(min_timestamp:np_int64) -> pd.DataFrame:
+def query_top_patrollers(min_timestamp:int) -> pd.DataFrame:
     sql = f"""SELECT
       log_id,
       log_timestamp,
@@ -217,24 +176,9 @@ def query_top_patrollers(min_timestamp:np_int64) -> pd.DataFrame:
       AND log_timestamp>=?
     ORDER BY
       log_timestamp ASC"""
-    params = ( min_timestamp.item(), )  # .item() converts from np.int64 to int
+    params = ( min_timestamp, )
 
-    query_result = _query_mediawiki(sql, params)
-
-    top_patrollers = pd.DataFrame(
-        data={
-            'log_id' : [ int(row['log_id']) for row in query_result ],
-            'log_timestamp' : [ int(row['log_timestamp']) for row in query_result ],
-            'log_params' : [ row['log_params'].decode('utf8') for row in query_result ],
-            'actor_name' : [ row['actor_name'].decode('utf8') for row in query_result ]
-        },
-        columns=[
-            'log_id',
-            'log_timestamp',
-            'log_params',
-            'actor_name'
-        ]
-    )
+    top_patrollers = _query_mediawiki_to_dataframe(sql, params)
 
     top_patrollers = top_patrollers.merge(
         right=top_patrollers['log_params'].str.extract(
@@ -272,24 +216,9 @@ def query_ores_scores() -> pd.DataFrame:
         JOIN recentchanges ON oresc_rev=rc_this_oldid
     WHERE
       rc_patrolled IN (0, 1)"""
-    query_result = _query_mediawiki(sql)
+    ores_scores = _query_mediawiki_to_dataframe(sql)
 
-    ores_scores = pd.DataFrame(
-        data={
-            'oresc_rev' : [ int(row['oresc_rev']) for row in query_result ],
-            'oresc_model' : [ int(row['oresc_model']) for row in query_result ],
-            'oresc_class' : [ int(row['oresc_class']) for row in query_result ],
-            'oresc_probability' : [ float(row['oresc_probability']) for row in query_result ],
-            'oresc_is_predicted' : [ int(row['oresc_is_predicted']) for row in query_result ]
-        },
-        columns=[
-            'oresc_rev',
-            'oresc_model',
-            'oresc_class',
-            'oresc_probability',
-            'oresc_is_predicted'
-        ]
-    )
+    ores_scores['oresc_probability'] = ores_scores['oresc_probability'].astype(float)
 
     LOG.info('Queried ORES scores')
 
@@ -317,38 +246,7 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
     WHERE
       rc_patrolled IN (0, 1)
       AND rc_namespace!=0"""
-    query_result = _query_mediawiki(sql)
-
-    unpatrolled_changes = pd.DataFrame(
-        data={
-            'rc_id' : [ int(row['rc_id']) for row in query_result ],
-            'rc_timestamp' : [ int(row['rc_timestamp']) for row in query_result ],
-            'rc_namespace' : [ int(row['rc_namespace']) for row in query_result ],
-            'rc_title' : [ row['rc_title'].decode('utf8') for row in query_result ],
-            'rc_source' : [ row['rc_source'].decode('utf8') for row in query_result ],
-            'rc_patrolled' : [ int(row['rc_patrolled']) for row in query_result ],
-            'rc_new_len' : [ int(row['rc_new_len']) for row in query_result ],
-            'rc_old_len' : [ int(row['rc_old_len']) for row in query_result ],
-            'rc_this_oldid' : [ int(row['rc_this_oldid']) for row in query_result ],
-            'actor_user' : [ row['actor_user'] for row in query_result ],
-            'actor_name' : [ row['actor_name'].decode('utf8') for row in query_result ],
-            'comment_text' : [ row['comment_text'].decode('utf8') for row in query_result ],
-        },
-        columns=[
-            'rc_id',
-            'rc_timestamp',
-            'rc_namespace',
-            'rc_title',
-            'rc_source',
-            'rc_patrolled',
-            'rc_new_len',
-            'rc_old_len',
-            'rc_this_oldid',
-            'actor_user',
-            'actor_name',
-            'comment_text'
-        ]
-    )
+    unpatrolled_changes = _query_mediawiki_to_dataframe(sql)
 
     try:
         unpatrolled_changes['time'] = pd.to_datetime(
@@ -383,16 +281,7 @@ def query_translation_pages() -> list[str]:
     WHERE
       rc_patrolled=0
       AND page_namespace=1198"""
-    query_result = _query_mediawiki(sql)
-
-    translation_pages = pd.DataFrame(
-        data={
-            'page_title' : [ row['page_title'].decode('utf8') for row in query_result ]
-        },
-        columns=[
-            'page_title'
-        ]
-    )
+    translation_pages = _query_mediawiki_to_dataframe(sql)
 
     translation_pages['translatable_page'] = translation_pages['page_title'].apply(
         func=lambda x : '/'.join(x.split('/')[:-2])

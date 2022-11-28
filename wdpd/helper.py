@@ -109,4 +109,5 @@ def init_directories() -> None:
 
 def df_info(dataframe:pd.DataFrame) -> None:
     LOG.info(dataframe.shape)
+    LOG.info(dataframe.info())
     LOG.info(dataframe.head())

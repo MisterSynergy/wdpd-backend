@@ -30,7 +30,7 @@ def main() -> None:
     change_tags = query.query_change_tags()
     ores_scores = query.query_ores_scores()
     unpatrolled_changes = query.get_unpatrolled_changes(change_tags, ores_scores, actions)
-    top_patrollers = query.query_top_patrollers(unpatrolled_changes['rc_timestamp'].min())
+    top_patrollers = query.query_top_patrollers(int(unpatrolled_changes['time'].min().strftime('%Y%m%d%H%M%S')))
     wdcm_toplist = query.retrieve_highly_used_item_list()
     rfd_links = query.retrieve_wdrfd_links()
     unpatrolled_changes_not_ns0 = query.query_unpatrolled_changes_outside_main_namespace()
@@ -40,7 +40,7 @@ def main() -> None:
 
     #### debugging
     if DEBUG is True:
-        dataframes = [unpatrolled_changes, change_tags, ores_scores, top_patrollers, wdcm_toplist]
+        dataframes = [unpatrolled_changes, change_tags, ores_scores, top_patrollers, wdcm_toplist, unpatrolled_changes_not_ns0, patrol_progress]
         for dataframe in dataframes:
             df_info(dataframe)
 

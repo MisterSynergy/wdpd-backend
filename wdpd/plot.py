@@ -749,7 +749,6 @@ def plot_ores_heatmap(unpatrolled_changes:pd.DataFrame, filenamepart:str, filt:p
     damaging = np_array(unpatrolled_changes.loc[filt & (unpatrolled_changes['oresc_damaging'].notna()) & (unpatrolled_changes['oresc_goodfaith'].notna()), 'oresc_damaging'])
     goodfaith = np_array(unpatrolled_changes.loc[filt & (unpatrolled_changes['oresc_damaging'].notna()) & (unpatrolled_changes['oresc_goodfaith'].notna()), 'oresc_goodfaith'])
 
-
     with Plot(filename=filename, figsize=FIGSIZE_HEATMAP, getfig=True) as (fig, ax):
         counts, _, _, img = ax.hist2d(
             damaging,
