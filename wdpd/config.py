@@ -1,8 +1,8 @@
 from os.path import expanduser
-from requests.utils import default_headers
+from requests.utils import default_user_agent
 
 
-USER_AGENT:str = f'{default_headers()["User-Agent"]} (Wikidata bot' \
+USER_AGENT:str = f'{default_user_agent()} (Wikidata bot' \
               ' by User:MisterSynergy; mailto:mister.synergy@yahoo.com)'
 
 WIKIDATA_API_ENDPOINT:str = 'https://www.wikidata.org/w/api.php'
