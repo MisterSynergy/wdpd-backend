@@ -1,6 +1,5 @@
 import logging
 import logging.config
-from os.path import expanduser
 from time import time
 
 import pandas as pd
