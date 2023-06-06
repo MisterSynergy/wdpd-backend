@@ -272,7 +272,7 @@ def dump_registered_users_with_block_history(unpatrolled_changes:pd.DataFrame, b
         df = unpatrolled_changes.loc[filt, ['actor_name', 'rc_id']].groupby(by=['actor_name']).count().reset_index().sort_values(by='rc_id', ascending=False).merge(right=block_stats, left_on='actor_name', right_on='user_name', how='inner')
         df = df.merge(right=current_user_blocks[['user_name', 'is_blocked']], how='left', on='user_name')
         df = df.rename(columns={'rc_id' : 'edits', 'time' : 'block_cnt'})
-        dump_dataframe(df[fields].sort_values(by='edits', ascending=False), job.get('filename', ''))
+        dump_dataframe(df[fields].sort_values(by=['edits', 'actor_name'], ascending=[False, True]), job.get('filename', ''))
 
     LOG.info('Dumped registered users with block history')
 
@@ -354,7 +354,9 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
         df = df.merge(right=current_user_blocks.loc[current_user_blocks['range_start'].notna() & (current_user_blocks['range_start']==current_user_blocks['range_end']), ['user_name', 'is_blocked']], how='left', on='user_name')
         df['is_range_blocked'] = df['user_name'].apply(func=_is_range_blocked, args=(current_user_blocks.loc[(current_user_blocks['range_start']!=current_user_blocks['range_end'])], ))
         df = df.astype({ 'is_range_blocked' : 'category' })
-        dump_dataframe(df[job.get('fields', [])].sort_values(by='edits', ascending=False), job.get('filename', ''))
+        df['actor_name_int'] = df['actor_name'].apply(func=lambda x : int(ipaddress.ip_address(x)))
+        df = df.sort_values(by=['edits', 'actor_name_int'], ascending=[ False, True ])
+        dump_dataframe(df[job.get('fields', [])], job.get('filename', ''))
 
     LOG.info('Dumped anon users with block history')
 
