@@ -285,9 +285,6 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
         ranges['range_start'] = ranges['ip_network'].apply(func=lambda x : int(x[0]))
         ranges['range_end'] = ranges['ip_network'].apply(func=lambda x : int(x[-1]))
 
-        filename = 'ranges-{mode}.tsv'
-        dump_dataframe(ranges, filename)
-
         return ranges
 
     def _cnt_blocked_range_memberships(user_name:str, ranges:pd.DataFrame) -> int:
@@ -297,19 +294,21 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
     def _is_range_blocked(user_name:str, current_user_blocks:pd.DataFrame) -> Optional[str]:
         ip = ipaddress.ip_address(user_name)
         if ip.version == 4:
-            ip_formatted = f'{ip:#X}'[2:]
+            ip_formatted = f'{ip:X}'
         elif ip.version == 6:
-            ip_formatted = f'{ip:#X}'[2:]
-            ip_formatted = f'v6-{ip_formatted}'
+            ip_formatted = f'v6-{ip:X}'
         else:
             raise RuntimeError(f'Unrecognized IP version {ip.version} detected')
 
-        relevant_blocks = current_user_blocks.loc[(current_user_blocks['range_start']!=current_user_blocks['range_end']) & (current_user_blocks['range_start']<=ip_formatted) & (current_user_blocks['range_end']>=ip_formatted)]
+        relevant_blocks = current_user_blocks.loc[(current_user_blocks['range_start']<=ip_formatted) & (current_user_blocks['range_end']>=ip_formatted)]
+
         if relevant_blocks.shape[0]==0:
             return None
-        else:
-            return 'infinity' if 'infinity' in relevant_blocks.unique() else 'temporary'
 
+        if 'infinity' in relevant_blocks['is_blocked'].unique():
+            return 'infinity'
+
+        return 'temporary'
 
     ranges = _get_range_df(block_history)
 
@@ -318,9 +317,6 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
     ips = unpatrolled_changes.loc[(unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_user'].isna()), ['actor_name', 'rc_id']].groupby(by=['actor_name']).count().reset_index()
     ips['range_blocks_all'] = ips['actor_name'].apply(func=_cnt_blocked_range_memberships, args=(ranges, ))
     ips['range_blocks_1y'] = ips['actor_name'].apply(func=_cnt_blocked_range_memberships, args=(ranges.loc[pd.Timestamp.now() - ranges['time'] < pd.Timedelta('365 days')], ))
-    
-    dump_dataframe(ips.loc[(ips['rc_id']>0) & (ips['range_blocks_all']>0)], 'range-blocks-all-{mode}.tsv')
-    dump_dataframe(ips.loc[(ips['rc_id']>0) & (ips['range_blocks_1y']>0)], 'range-blocks-1y-{mode}.tsv')
 
     subfilt_anon = (block_history['user_type'].isin(['ipv4', 'ipv6']))
     subfilt_1y = (pd.Timestamp.now() - block_history['time'] < pd.Timedelta('365 days'))
@@ -352,7 +348,7 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
         df = df.drop(columns=['rc_id'])
 
         df = df.merge(right=current_user_blocks.loc[current_user_blocks['range_start'].notna() & (current_user_blocks['range_start']==current_user_blocks['range_end']), ['user_name', 'is_blocked']], how='left', on='user_name')
-        df['is_range_blocked'] = df['user_name'].apply(func=_is_range_blocked, args=(current_user_blocks.loc[(current_user_blocks['range_start']!=current_user_blocks['range_end'])], ))
+        df['is_range_blocked'] = df['actor_name'].apply(func=_is_range_blocked, args=(current_user_blocks.loc[current_user_blocks['range_start']<current_user_blocks['range_end']], ))
         df = df.astype({ 'is_range_blocked' : 'category' })
         df['actor_name_int'] = df['actor_name'].apply(func=lambda x : int(ipaddress.ip_address(x)))
         df = df.sort_values(by=['edits', 'actor_name_int'], ascending=[ False, True ])
