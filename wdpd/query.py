@@ -1,5 +1,6 @@
-import logging
+import ipaddress
 from json import JSONDecodeError
+import logging
 from typing import Any, Optional
 
 import mariadb
@@ -61,6 +62,25 @@ def _edit_summary_broad_category(magic_action:str, actions:dict[str, list[str]])
         if magic_action in actions[key] and magic_action not in generic_actions:
             return key
     return 'NO_CAT'
+
+
+def _user_type(user_name:str) -> str:
+    try:
+        ip_network = ipaddress.ip_network(user_name, strict=False)
+    except ValueError:
+        return 'registered'
+
+    if ip_network.version == 4:
+        if ip_network.num_addresses > 1:
+            return 'ipv4range'
+        return 'ipv4'
+
+    if ip_network.version == 6:
+        if ip_network.num_addresses > 1:
+            return 'ipv6range'
+        return 'ipv6'
+
+    raise RuntimeError(f'Cannot determine user type for user {user_name}')
 
 
 def _query_ores_model_ids(ores_model_name:str) -> list[int]:
@@ -300,6 +320,62 @@ def query_translation_pages() -> list[str]:
     LOG.info('Queried translation pages')
 
     return translation_pages['translation_page'].unique().tolist()
+
+
+def query_block_history() -> pd.DataFrame:
+    sql = """SELECT
+      log_title AS user_name,
+      log_timestamp
+    FROM
+      logging
+    WHERE
+      log_type='block'
+      AND log_action='block'"""
+
+    block_history = _query_mediawiki_to_dataframe(sql)
+
+    try:
+        block_history['time'] = pd.to_datetime(
+            arg=block_history['log_timestamp'],
+            format='%Y%m%d%H%M%S'
+        )
+    except ValueError as exception:
+        LOG.warning('ValueError', exception)
+
+    block_history['user_name'] = block_history['user_name'].str.replace('_', ' ')
+    block_history['user_type'] = block_history['user_name'].apply(func=_user_type)
+    block_history['user_type'] = block_history['user_type'].astype('category')
+
+    block_history.drop(labels=['log_timestamp'], axis=1, inplace=True)
+
+    LOG.info('Queried user block history')
+
+    return block_history
+
+
+def query_current_blocks() -> pd.DataFrame:
+    sql = """SELECT
+      ipb_address AS user_name,
+      ipb_expiry AS is_blocked,
+      ipb_range_start AS range_start,
+      ipb_range_end AS range_end
+    FROM
+      ipblocks
+    WHERE
+      ipb_auto=0"""
+
+    current_blocks = _query_mediawiki_to_dataframe(sql)
+
+    # range: range_start!=range_end and not null
+    # ip: range_start=range_end and not null
+    # registered: range_start=range_end=null
+
+    current_blocks['is_blocked'] = current_blocks['is_blocked'].apply(func=lambda x : (x if x=='infinity' else 'temporary'))
+    current_blocks['is_blocked'] = current_blocks['is_blocked'].astype('category')
+
+    LOG.info('Queried current user blocks')
+
+    return current_blocks
 
 
 def retrieve_namespace_resolver() -> dict[int, str]:

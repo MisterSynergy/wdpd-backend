@@ -30,6 +30,8 @@ def main() -> None:
     ores_scores = query.query_ores_scores()
     unpatrolled_changes = query.get_unpatrolled_changes(change_tags, ores_scores, actions)
     top_patrollers = query.query_top_patrollers(int(unpatrolled_changes['time'].min().strftime('%Y%m%d%H%M%S')))
+    block_history = query.query_block_history()
+    current_user_blocks = query.query_current_blocks()
     wdcm_toplist = query.retrieve_highly_used_item_list()
     rfd_links = query.retrieve_wdrfd_links()
     unpatrolled_changes_not_ns0 = query.query_unpatrolled_changes_outside_main_namespace()
@@ -39,7 +41,7 @@ def main() -> None:
 
     #### debugging
     if DEBUG is True:
-        dataframes = [unpatrolled_changes, change_tags, ores_scores, top_patrollers, wdcm_toplist, unpatrolled_changes_not_ns0, patrol_progress]
+        dataframes = [unpatrolled_changes, change_tags, ores_scores, top_patrollers, block_history, current_user_blocks, wdcm_toplist, unpatrolled_changes_not_ns0, patrol_progress]
         for dataframe in dataframes:
             df_info(dataframe)
 
@@ -117,6 +119,7 @@ def main() -> None:
     dump.dump_ores_worklist_registered(unpatrolled_changes)
     dump.dump_items_with_many_revisions(unpatrolled_changes)
     dump.dump_users_with_many_creations(unpatrolled_changes)
+    dump.dump_users_with_block_history(unpatrolled_changes, block_history, current_user_blocks)
     dump.dump_highly_used_items(unpatrolled_changes, wdcm_toplist)
     dump.term_dump_processor(unpatrolled_changes, actions['terms'])
     dump.term_in_editentity_dump_processor(unpatrolled_changes)

@@ -1,5 +1,7 @@
 from glob import glob
+import ipaddress
 import logging
+from typing import Optional
 
 from numpy import mean
 import pandas as pd
@@ -244,6 +246,124 @@ def dump_users_with_many_creations(unpatrolled_changes:pd.DataFrame) -> None:
     dump_dataframe(many_creations, filename)
 
     LOG.info('Dumped users with many creations')
+
+
+def dump_registered_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_history:pd.DataFrame, current_user_blocks:pd.DataFrame) -> None:
+    fields = ['actor_name', 'edits', 'block_cnt', 'is_blocked']
+
+    block_stats = block_history.loc[block_history['user_type']=='registered', ['user_name', 'time']].groupby(by=['user_name']).count().reset_index()
+
+    subfilt_registered = (block_history['user_type']=='registered')
+    subfilt_1y = (pd.Timestamp.now() - block_history['time'] < pd.Timedelta('365 days'))
+
+    jobs = [
+        {
+            'filename' : 'worklist-users-registered-with-block-history-all-{mode}.tsv',
+            'subfilt' : subfilt_registered,
+        },
+        {
+            'filename' : 'worklist-users-registered-with-block-history-1y-{mode}.tsv',
+            'subfilt' : subfilt_registered & subfilt_1y,
+        }
+    ]
+
+    for job in jobs:
+        filt = (unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_name'].isin(block_history.loc[job.get('subfilt'), 'user_name']))
+        df = unpatrolled_changes.loc[filt, ['actor_name', 'rc_id']].groupby(by=['actor_name']).count().reset_index().sort_values(by='rc_id', ascending=False).merge(right=block_stats, left_on='actor_name', right_on='user_name', how='inner')
+        df = df.merge(right=current_user_blocks[['user_name', 'is_blocked']], how='left', on='user_name')
+        df = df.rename(columns={'rc_id' : 'edits', 'time' : 'block_cnt'})
+        dump_dataframe(df[fields].sort_values(by='edits', ascending=False), job.get('filename', ''))
+
+    LOG.info('Dumped registered users with block history')
+
+
+def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_history:pd.DataFrame, current_user_blocks:pd.DataFrame) -> None:
+
+    def _get_range_df(block_history:pd.DataFrame) -> pd.DataFrame:
+        ranges = block_history.loc[block_history['user_type'].isin(['ipv4range', 'ipv6range']), ['user_name', 'time']]
+        ranges['ip_network'] = ranges['user_name'].apply(func=lambda x : ipaddress.ip_network(x, strict=False))
+        ranges['range_start'] = ranges['ip_network'].apply(func=lambda x : int(x[0]))
+        ranges['range_end'] = ranges['ip_network'].apply(func=lambda x : int(x[-1]))
+
+        filename = 'ranges-{mode}.tsv'
+        dump_dataframe(ranges, filename)
+
+        return ranges
+
+    def _cnt_blocked_range_memberships(user_name:str, ranges:pd.DataFrame) -> int:
+        ip_int = int(ipaddress.ip_address(user_name))
+        return ranges.loc[(ranges['range_start']<=ip_int) & (ranges['range_end']>=ip_int)].shape[0]
+
+    def _is_range_blocked(user_name:str, current_user_blocks:pd.DataFrame) -> Optional[str]:
+        ip = ipaddress.ip_address(user_name)
+        if ip.version == 4:
+            ip_formatted = f'{ip:#X}'[2:]
+        elif ip.version == 6:
+            ip_formatted = f'{ip:#X}'[2:]
+            ip_formatted = f'v6-{ip_formatted}'
+        else:
+            raise RuntimeError(f'Unrecognized IP version {ip.version} detected')
+
+        relevant_blocks = current_user_blocks.loc[(current_user_blocks['range_start']!=current_user_blocks['range_end']) & (current_user_blocks['range_start']<=ip_formatted) & (current_user_blocks['range_end']>=ip_formatted)]
+        if relevant_blocks.shape[0]==0:
+            return None
+        else:
+            return 'infinity' if 'infinity' in relevant_blocks.unique() else 'temporary'
+
+
+    ranges = _get_range_df(block_history)
+
+    block_stats = block_history.loc[block_history['user_type'].isin(['ipv4', 'ipv6']), ['user_name', 'time']].groupby(by=['user_name']).count().reset_index()
+
+    ips = unpatrolled_changes.loc[(unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_user'].isna()), ['actor_name', 'rc_id']].groupby(by=['actor_name']).count().reset_index()
+    ips['range_blocks_all'] = ips['actor_name'].apply(func=_cnt_blocked_range_memberships, args=(ranges, ))
+    ips['range_blocks_1y'] = ips['actor_name'].apply(func=_cnt_blocked_range_memberships, args=(ranges.loc[pd.Timestamp.now() - ranges['time'] < pd.Timedelta('365 days')], ))
+    
+    dump_dataframe(ips.loc[(ips['rc_id']>0) & (ips['range_blocks_all']>0)], 'range-blocks-all-{mode}.tsv')
+    dump_dataframe(ips.loc[(ips['rc_id']>0) & (ips['range_blocks_1y']>0)], 'range-blocks-1y-{mode}.tsv')
+
+    subfilt_anon = (block_history['user_type'].isin(['ipv4', 'ipv6']))
+    subfilt_1y = (pd.Timestamp.now() - block_history['time'] < pd.Timedelta('365 days'))
+
+    jobs = [
+        {
+            'filename' : 'worklist-users-anon-with-block-history-all-{mode}.tsv',
+            'subfilt' : subfilt_anon,
+            'range_column_name' : 'range_blocks_all',
+            'fields' : ['actor_name', 'edits', 'block_cnt', 'range_blocks_all', 'total_blocks', 'is_blocked', 'is_range_blocked'],
+        },
+        {
+            'filename' : 'worklist-users-anon-with-block-history-1y-{mode}.tsv',
+            'subfilt' : subfilt_anon & subfilt_1y,
+            'range_column_name' : 'range_blocks_1y',
+            'fields' : ['actor_name', 'edits', 'block_cnt', 'range_blocks_1y', 'total_blocks', 'is_blocked', 'is_range_blocked'],
+        }
+    ]
+
+    for job in jobs:
+        filt = (unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_name'].isin(block_history.loc[job.get('subfilt'), 'user_name']))
+        df = unpatrolled_changes.loc[filt, ['actor_name', 'rc_id']].groupby(by=['actor_name']).count().reset_index().sort_values(by='rc_id', ascending=False).merge(right=block_stats, left_on='actor_name', right_on='user_name', how='inner')
+        df = df.rename(columns={'rc_id' : 'edits', 'time' : 'block_cnt'})
+        df = df.merge(right=ips.loc[(ips['rc_id']>0) & (ips[job.get('range_column_name', '')]>0)], on='actor_name', how='outer')
+        df = df.fillna(0)
+        df = df.astype({ 'edits' : int, 'rc_id' : int, 'block_cnt' : int, job.get('range_column_name', '') : int })
+        df['edits'] = df[['edits', 'rc_id']].max(axis=1)
+        df['total_blocks'] = df['block_cnt'] + df[job.get('range_column_name', '')]
+        df = df.drop(columns=['rc_id'])
+
+        df = df.merge(right=current_user_blocks.loc[current_user_blocks['range_start'].notna() & (current_user_blocks['range_start']==current_user_blocks['range_end']), ['user_name', 'is_blocked']], how='left', on='user_name')
+        df['is_range_blocked'] = df['user_name'].apply(func=_is_range_blocked, args=(current_user_blocks.loc[(current_user_blocks['range_start']!=current_user_blocks['range_end'])], ))
+        df = df.astype({ 'is_range_blocked' : 'category' })
+        dump_dataframe(df[job.get('fields', [])].sort_values(by='edits', ascending=False), job.get('filename', ''))
+
+    LOG.info('Dumped anon users with block history')
+
+
+def dump_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_history:pd.DataFrame, current_user_blocks:pd.DataFrame) -> None:
+    dump_registered_users_with_block_history(unpatrolled_changes, block_history, current_user_blocks)
+    dump_anon_users_with_block_history(unpatrolled_changes, block_history, current_user_blocks)
+
+    LOG.info('Dumped all users with block history')
 
 
 def dump_highly_used_items(unpatrolled_changes:pd.DataFrame, wdcm_toplist:pd.DataFrame, \
