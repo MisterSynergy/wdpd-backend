@@ -20,7 +20,7 @@ class Replica:
         self.cursor = self.replica.cursor(dictionary=True)
 
 
-    def __enter__(self) -> mariadb.connection.cursor:
+    def __enter__(self):
         return self.cursor
 
 
