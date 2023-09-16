@@ -45,14 +45,6 @@ def _query_mediawiki_to_dataframe(query:str, params:Optional[tuple[Any]]=None) -
         data=_query_mediawiki(query, params),
     )
 
-    for column in df.columns:
-        if not pd.api.types.is_string_dtype(df[column]):
-            continue
-        try:
-            df[column] = df[column].str.decode('utf8')
-        except AttributeError as exception:
-            LOG.warning(f'Cannot convert column {column} to string due to exception: {exception}')
-
     return df
 
 
@@ -94,7 +86,7 @@ WHERE
     params = ( ores_model_name, )
 
     query_result = _query_mediawiki(sql, params)
-    ores_model_ids = [ int(row['oresm_id']) for row in query_result ]
+    ores_model_ids = [ row.get('oresm_id', 0) for row in query_result ]
 
     return ores_model_ids
 
@@ -114,16 +106,16 @@ def get_unpatrolled_changes(change_tags:pd.DataFrame, ores_scores:pd.DataFrame, 
 def query_unpatrolled_changes() -> pd.DataFrame:
     sql = """SELECT
       rc_id,
-      rc_timestamp,
-      rc_title,
-      rc_source,
+      CONVERT(rc_timestamp USING utf8) AS rc_timestamp,
+      CONVERT(rc_title USING utf8) AS rc_title,
+      CONVERT(rc_source USING utf8) AS rc_source,
       rc_patrolled,
       rc_new_len,
       rc_old_len,
       rc_this_oldid,
       actor_user,
-      actor_name,
-      comment_text
+      CONVERT(actor_name USING utf8) AS actor_name,
+      CONVERT(comment_text USING utf8) AS comment_text
     FROM
       recentchanges
         JOIN actor_recentchanges ON rc_actor=actor_id
@@ -164,7 +156,7 @@ def query_change_tags() -> pd.DataFrame:
     sql = """SELECT
       rc_id,
       ct_id,
-      ctd_name
+      CONVERT(ctd_name USING utf8) AS ctd_name
     FROM
       recentchanges
         LEFT JOIN change_tag ON rc_id=ct_rc_id
@@ -183,9 +175,9 @@ def query_change_tags() -> pd.DataFrame:
 def query_top_patrollers(min_timestamp:int) -> pd.DataFrame:
     sql = f"""SELECT
       log_id,
-      log_timestamp,
-      log_params,
-      actor_name
+      CONVERT(log_timestamp USING utf8) AS log_timestamp,
+      CONVERT(log_params USING utf8) AS log_params,
+      CONVERT(actor_name USING utf8) AS actor_name
     FROM
       logging
         JOIN actor_logging ON log_actor=actor_id
@@ -248,17 +240,17 @@ def query_ores_scores() -> pd.DataFrame:
 def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
     sql = """SELECT
       rc_id,
-      rc_timestamp,
+      CONVERT(rc_timestamp USING utf8) AS rc_timestamp,
       rc_namespace,
-      rc_title,
-      rc_source,
+      CONVERT(rc_title USING utf8) AS rc_title,
+      CONVERT(rc_source USING utf8) AS rc_source,
       rc_patrolled,
       rc_new_len,
       rc_old_len,
       rc_this_oldid,
       actor_user,
-      actor_name,
-      comment_text
+      CONVERT(actor_name USING utf8) AS actor_name,
+      CONVERT(comment_text USING utf8) AS comment_text
     FROM
       recentchanges
         JOIN actor_recentchanges ON rc_actor=actor_id
@@ -293,7 +285,7 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
 
 def query_translation_pages() -> list[str]:
     sql = """SELECT
-      page_title
+      CONVERT(page_title USING utf8) AS page_title
     FROM
       revtag
         JOIN page ON rt_page=page_id
@@ -324,8 +316,8 @@ def query_translation_pages() -> list[str]:
 
 def query_block_history() -> pd.DataFrame:
     sql = """SELECT
-      log_title AS user_name,
-      log_timestamp
+      CONVERT(log_title USING utf8) AS user_name,
+      CONVERT(log_timestamp USING utf8) AS log_timestamp
     FROM
       logging
     WHERE
@@ -355,10 +347,10 @@ def query_block_history() -> pd.DataFrame:
 
 def query_current_blocks() -> pd.DataFrame:
     sql = """SELECT
-      ipb_address AS user_name,
-      ipb_expiry AS is_blocked,
-      ipb_range_start AS range_start,
-      ipb_range_end AS range_end
+      CONVERT(ipb_address USING utf8) AS user_name,
+      CONVERT(ipb_expiry USING utf8) AS is_blocked,
+      CONVERT(ipb_range_start USING utf8) AS range_start,
+      CONVERT(ipb_range_end USING utf8) AS range_end
     FROM
       ipblocks
     WHERE
