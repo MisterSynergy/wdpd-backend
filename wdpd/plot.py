@@ -827,13 +827,15 @@ def make_patrol_progress_plot(patrol_progress:pd.DataFrame, language:str) -> Non
 
     filt = (patrol_progress['editsummary-magic-param1']==language)
 
-    max_patrol_time = m_ceil(patrol_progress.loc[filt, 'patrol_delay_hours'].max())
+    max_patrol_time = m_ceil(patrol_progress.loc[filt, 'patrol_delay_seconds'].max().total_seconds() / 3600)
     ticks = get_xticks(max_patrol_time)
     bins = get_bins(max_patrol_time)
 
+    hours = patrol_progress.loc[filt, 'patrol_delay_seconds'].dt.total_seconds() / 3600
+
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD, svg=False) as ax:
         try:
-            patrol_progress.loc[filt, 'patrol_delay_hours'].hist(bins=bins, ax=ax)
+            hours.hist(bins=bins, ax=ax)
         except ValueError:
             pass
         else:
@@ -852,13 +854,13 @@ def make_patrol_progress_percentiles(patrol_progress:pd.DataFrame, language:str)
 
     filt = patrol_progress['editsummary-magic-param1']==language
 
-    tmp = patrol_progress.loc[filt, 'patrol_delay_hours']
+    tmp = patrol_progress.loc[filt, 'patrol_delay_seconds'].dt.total_seconds() / 3600
     percentiles = range(0, 101)
     values = []
     for i in percentiles:
         values.append(tmp.quantile(i/100))
 
-    max_patrol_time = m_ceil(patrol_progress.loc[filt, 'patrol_delay_hours'].max())
+    max_patrol_time = m_ceil(patrol_progress.loc[filt, 'patrol_delay_seconds'].max().total_seconds() / 3600)
     ticks = get_xticks(max_patrol_time)
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD, svg=False) as ax:
