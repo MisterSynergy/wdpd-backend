@@ -746,6 +746,9 @@ def plot_ores_heatmap(unpatrolled_changes:pd.DataFrame, filenamepart:str, filt:p
 
     cnt = len(unpatrolled_changes.loc[filt & (unpatrolled_changes['oresc_damaging'].notna()) & (unpatrolled_changes['oresc_goodfaith'].notna())].index)
 
+    if cnt == 0:  # quick fix to prevent script from crashing due to unavailability of anon data after introduction of temporary accounts
+        return
+
     damaging = np_array(unpatrolled_changes.loc[filt & (unpatrolled_changes['oresc_damaging'].notna()) & (unpatrolled_changes['oresc_goodfaith'].notna()), 'oresc_damaging'])
     goodfaith = np_array(unpatrolled_changes.loc[filt & (unpatrolled_changes['oresc_damaging'].notna()) & (unpatrolled_changes['oresc_goodfaith'].notna()), 'oresc_goodfaith'])
 
