@@ -6,6 +6,7 @@ from typing import Optional, TypedDict
 from matplotlib import cm
 from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy import array as np_array, amax
@@ -51,7 +52,7 @@ def plot_edits_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
     filename = f'{PLOTPATH}editsByDate'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
                 unpatrolled_changes['actor_user'].isna()
@@ -66,8 +67,8 @@ def plot_edits_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
         _, _, _, ymax = ax.axis()
         ymax = int(ymax)
         ax.set(ylim=(0, ymax))
-        ax.set_xticks(plot_params.get('xticks_window'))
-        ax.set_xticklabels(plot_params.get('xticklabels_window'))
+        ax.set_xticks([ mdates.date2num(ts.to_pydatetime()) for ts in plot_params['xticks_window'] ])
+        ax.set_xticklabels(plot_params['xticklabels_window'])
 
     LOG.info('Plotted edits by date')
 
@@ -78,7 +79,7 @@ def plot_edits_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:PlotPara
     filename = f'{PLOTPATH}editsByWeekday'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.weekday,
                 unpatrolled_changes['actor_user'].isna()
@@ -105,7 +106,7 @@ def plot_edits_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:PlotParamsD
     filename = f'{PLOTPATH}editsByHour'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.hour,
                 unpatrolled_changes['actor_user'].isna()
@@ -131,7 +132,7 @@ def plot_patrol_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plo
     filename = f'{PLOTPATH}patrolstatusByDate'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
                 unpatrolled_changes['rc_patrolled']
@@ -145,8 +146,8 @@ def plot_patrol_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plo
         _, _, _, ymax = ax.axis()
         ymax = int(ymax)
         ax.set(ylim=(0, ymax))
-        ax.set_xticks(plot_params.get('xticks_window'))
-        ax.set_xticklabels(plot_params.get('xticklabels_window'))
+        ax.set_xticks([ mdates.date2num(ts.to_pydatetime()) for ts in plot_params['xticks_window'] ])
+        ax.set_xticklabels(plot_params['xticklabels_window'])
 
     LOG.info('Plotted patrol status by date')
 
@@ -157,7 +158,7 @@ def plot_patrol_status_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:
     filename = f'{PLOTPATH}patrolstatusByWeekday'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.weekday,
                 unpatrolled_changes['rc_patrolled']
@@ -183,7 +184,7 @@ def plot_patrol_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:Plo
     filename = f'{PLOTPATH}patrolstatusByHour'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.hour,
                 unpatrolled_changes['rc_patrolled']
@@ -208,7 +209,7 @@ def plot_editor_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plo
     filename = f'{PLOTPATH}editorstatusByDate'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id', 'actor_name']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id', 'actor_name']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
                 unpatrolled_changes['actor_user'].notna()
@@ -223,8 +224,8 @@ def plot_editor_status_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plo
         _, _, _, ymax = ax.axis()
         ymax = int(ymax)
         ax.set(ylim=(0, ymax))
-        ax.set_xticks(plot_params.get('xticks_window'))
-        ax.set_xticklabels(plot_params.get('xticklabels_window'))
+        ax.set_xticks([ mdates.date2num(ts.to_pydatetime()) for ts in plot_params['xticks_window'] ])
+        ax.set_xticklabels(plot_params['xticklabels_window'])
 
     LOG.info('Plotted editor status by date')
 
@@ -235,7 +236,7 @@ def plot_editor_status_by_weekday(unpatrolled_changes:pd.DataFrame, plot_params:
     filename = f'{PLOTPATH}editorstatusByWeekday'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id', 'actor_name']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id', 'actor_name']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.weekday,
                 unpatrolled_changes['actor_user'].notna()
@@ -262,7 +263,7 @@ def plot_editor_status_by_hour(unpatrolled_changes:pd.DataFrame, plot_params:Plo
     filename = f'{PLOTPATH}editorstatusByHour'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id', 'actor_name']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id', 'actor_name']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.hour,
                 unpatrolled_changes['actor_user'].notna()
@@ -288,7 +289,7 @@ def plot_unpatrolled_actions_by_date(unpatrolled_changes:pd.DataFrame, plot_para
     filename = f'{PLOTPATH}actionsByDate'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
                 unpatrolled_changes['rc_source']
@@ -302,8 +303,8 @@ def plot_unpatrolled_actions_by_date(unpatrolled_changes:pd.DataFrame, plot_para
         ax.set_ylabel('number of changes')
         _, _, _, ymax = ax.axis()
         ax.set(ylim=(0, ymax))
-        ax.set_xticks(plot_params.get('xticks_window'))
-        ax.set_xticklabels(plot_params.get('xticklabels_window'))
+        ax.set_xticks([ mdates.date2num(ts.to_pydatetime()) for ts in plot_params['xticks_window'] ])
+        ax.set_xticklabels(plot_params['xticklabels_window'])
 
     LOG.info('Plotted unpatrolled actions by date')
 
@@ -314,7 +315,7 @@ def plot_reverted_by_date(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataF
     undone = ['mw-reverted']
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp_rev_1 = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id', 'time']].merge(
+        tmp_rev_1 = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id', 'time']].merge(
             right=change_tags.loc[(change_tags['ctd_name'].isin(undone)), ['rc_id', 'ctd_name']],
             on='rc_id'
         )
@@ -330,8 +331,8 @@ def plot_reverted_by_date(unpatrolled_changes:pd.DataFrame, change_tags:pd.DataF
         ax.set_ylabel('number of changes')
         _, _, _, ymax = ax.axis()
         ax.set(ylim=(0, ymax))
-        ax.set_xticks(plot_params.get('xticks_window'))
-        ax.set_xticklabels(plot_params.get('xticklabels_window'))
+        ax.set_xticks([ mdates.date2num(ts.to_pydatetime()) for ts in plot_params['xticks_window'] ])
+        ax.set_xticklabels(plot_params['xticklabels_window'])
 
     LOG.info('Plotted reverted edits by date')
 
@@ -383,7 +384,7 @@ def plot_broad_action_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plot
     filename = f'{PLOTPATH}broadActionByDate'
 
     with Plot(filename=filename, figsize=FIGSIZE_WIDE) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['time'].dt.date,
                 unpatrolled_changes['editsummary-magic-action-broad']
@@ -395,7 +396,7 @@ def plot_broad_action_by_date(unpatrolled_changes:pd.DataFrame, plot_params:Plot
         ax.set_xlabel('date')
         ax.set_ylabel('number of changes')
         ax.set_xticks(range(0, 29, 7)) # also messy
-        ax.set_xticklabels(plot_params.get('xticklabels_window'), rotation=0, ha='center')
+        ax.set_xticklabels(plot_params['xticklabels_window'], rotation=0, ha='center')
 
     LOG.info('Plotted broad action by date')
 
@@ -404,7 +405,7 @@ def plot_broad_action_by_patrol_status(unpatrolled_changes:pd.DataFrame, plot_pa
     filename = f'{PLOTPATH}broadActionByPatrolStatus'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window'), ['rc_id']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'], ['rc_id']].groupby(
             by=[
                 unpatrolled_changes['editsummary-magic-action-broad'],
                 unpatrolled_changes['rc_patrolled']
@@ -566,7 +567,7 @@ def plot_remaining_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotPar
     filename = f'{PLOTPATH}remainingByDate'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
-        tmp = unpatrolled_changes.loc[plot_params.get('filter_window') & (unpatrolled_changes['rc_patrolled']==0), ['rc_id', 'actor_user', 'rc_patrolled']].groupby(
+        tmp = unpatrolled_changes.loc[plot_params['filter_window'] & (unpatrolled_changes['rc_patrolled']==0), ['rc_id', 'actor_user', 'rc_patrolled']].groupby(
             by=unpatrolled_changes['time'].dt.date
         ).count()
         tmp['actor_anon'] = tmp['rc_id'] - tmp['actor_user']
@@ -580,8 +581,8 @@ def plot_remaining_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotPar
         ax.set_ylabel('unpatrolled changes')
         _, _, _, ymax = ax.axis()
         ax.set(ylim=(0, ymax))
-        ax.set_xticks(plot_params.get('xticks_window'))
-        ax.set_xticklabels(plot_params.get('xticklabels_window'))
+        ax.set_xticks([ mdates.date2num(ts.to_pydatetime()) for ts in plot_params['xticks_window'] ])
+        ax.set_xticklabels(plot_params['xticklabels_window'])
 
     LOG.info('Plotted remaining workload by date')
 
