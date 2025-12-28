@@ -346,21 +346,38 @@ def query_block_history() -> pd.DataFrame:
 
 
 def query_current_blocks() -> pd.DataFrame:
-    sql = """SELECT
-      CONVERT(ipb_address USING utf8) AS user_name,
-      CONVERT(ipb_expiry USING utf8) AS is_blocked,
-      CONVERT(ipb_range_start USING utf8) AS range_start,
-      CONVERT(ipb_range_end USING utf8) AS range_end
+    sql_anon = """SELECT
+      CONVERT(bt_address USING utf8) AS user_name,
+      CONVERT(bl_expiry USING utf8) AS is_blocked,
+      CONVERT(bt_range_start USING utf8) AS range_start,
+      CONVERT(bt_range_end USING utf8) AS range_end
     FROM
-      ipblocks
+      block
+        JOIN block_target ON bl_target=bt_id
     WHERE
-      ipb_auto=0"""
+      bt_user IS NULL
+      AND bt_auto=0"""
 
-    current_blocks = _query_mediawiki_to_dataframe(sql)
+    current_blocks_anon = _query_mediawiki_to_dataframe(sql_anon)
 
-    # range: range_start!=range_end and not null
-    # ip: range_start=range_end and not null
-    # registered: range_start=range_end=null
+    sql_registered = """SELECT
+      CONVERT(bt_user_text USING utf8) AS user_name,
+      CONVERT(bl_expiry USING utf8) AS is_blocked,
+      CONVERT(bt_range_start USING utf8) AS range_start,
+      CONVERT(bt_range_end USING utf8) AS range_end
+    FROM
+      block
+        JOIN block_target ON bl_target=bt_id
+    WHERE
+      bt_address IS NULL
+      AND bt_auto=0"""
+
+    current_blocks_registered = _query_mediawiki_to_dataframe(sql_registered)
+
+    # range: range_start and range_end not null
+    # ip: range_start and range_end null
+
+    current_blocks = pd.concat(objs=[current_blocks_anon, current_blocks_registered], ignore_index=True)
 
     current_blocks['is_blocked'] = current_blocks['is_blocked'].apply(func=lambda x : (x if x=='infinity' else 'temporary'))
     current_blocks['is_blocked'] = current_blocks['is_blocked'].astype('category')
