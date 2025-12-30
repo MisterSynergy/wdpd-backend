@@ -593,25 +593,17 @@ def plot_remaining_by_date(unpatrolled_changes:pd.DataFrame, plot_params:PlotPar
     LOG.info('Plotted remaining workload by date')
 
 
-def plot_ores_hist(unpatrolled_changes:pd.DataFrame, filt:pd.Series, grouper:pd.Series, ores_model:str, filenamepart:str, legend:Optional[list[str]]=None, titleprefix:str='') -> None:
+def plot_ores_hist(unpatrolled_changes:pd.DataFrame, filt:pd.Series|None, grouper:pd.Series|str, ores_model:str, filenamepart:str, legend:Optional[list[str]]=None, titleprefix:str='') -> None:
     filename = f'{PLOTPATH}ORES-hist-{filenamepart}'
 
     with Plot(filename=filename, figsize=FIGSIZE_STANDARD) as (_, ax):
         ores_notna_filter = (unpatrolled_changes['oresc_damaging'].notna()) & (unpatrolled_changes['oresc_goodfaith'].notna())
         if filt is None:
-            if grouper is None:
-                hist_base = unpatrolled_changes.loc[ores_notna_filter]
-                cnt = len(hist_base[ores_model].index)
-            else:
-                hist_base = unpatrolled_changes.loc[ores_notna_filter].groupby(by=grouper)
-                cnt = len(unpatrolled_changes.loc[ores_notna_filter, ores_model].index)
+            hist_base = unpatrolled_changes.loc[ores_notna_filter].groupby(by=grouper)
+            cnt = len(unpatrolled_changes.loc[ores_notna_filter, ores_model].index)
         else:
-            if grouper is None:
-                hist_base = unpatrolled_changes.loc[ores_notna_filter & filt]
-                cnt = len(hist_base[ores_model].index)
-            else:
-                hist_base = unpatrolled_changes.loc[ores_notna_filter & filt].groupby(by=grouper)
-                cnt = len(unpatrolled_changes.loc[ores_notna_filter & filt, ores_model].index)
+            hist_base = unpatrolled_changes.loc[ores_notna_filter & filt].groupby(by=grouper)
+            cnt = len(unpatrolled_changes.loc[ores_notna_filter & filt, ores_model].index)
 
         hist_base[ores_model].hist(bins=101, ax=ax, legend=True, alpha=0.5)
 
