@@ -612,7 +612,7 @@ def compile_patrol_progress(unpatrolled_changes:pd.DataFrame, \
         )
     except ValueError as exception:
         LOG.warning('ValueError', exception)
-        return None
+        raise exception
 
     patrol_progress['patrol_delay'] = patrol_progress['log_time'] \
         - patrol_progress['time']
