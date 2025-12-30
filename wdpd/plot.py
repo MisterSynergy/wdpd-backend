@@ -451,8 +451,10 @@ def plot_language_by_patrol_status(unpatrolled_changes:pd.DataFrame, termactions
         ax.set_ylabel('language code')
 
     ### output to file
-    tmp2 = tmp.drop(labels='rc_id_y', axis=1).unstack(fill_value=0).rename_axis((None,None), axis=1)
-    tmp2.columns = [ 'unpatrolled', 'patrolled' ]
+    tmp2 = tmp.drop(labels='rc_id_y', axis=1).unstack(fill_value=0)
+    if isinstance(tmp2, pd.Series):
+        tmp2 = tmp2.to_frame()
+    tmp2.columns = pd.Index([ 'unpatrolled', 'patrolled' ])
     tmp2['total'] = tmp2['unpatrolled'] + tmp2['patrolled']
 
     tmp2.sort_values(by=['total', 'unpatrolled'], ascending=[False, False], inplace=True)
@@ -486,8 +488,10 @@ def plot_property_by_patrol_status(unpatrolled_changes:pd.DataFrame, claimaction
         ax.set_ylabel('property')
 
     ### output to file
-    tmp2 = tmp.drop(labels='rc_id_y', axis=1).unstack(fill_value=0).rename_axis((None,None), axis=1)
-    tmp2.columns = [ 'unpatrolled', 'patrolled' ]
+    tmp2 = tmp.drop(labels='rc_id_y', axis=1).unstack(fill_value=0)
+    if isinstance(tmp2, pd.Series):
+        tmp2 = tmp2.to_frame()
+    tmp2.columns = pd.Index([ 'unpatrolled', 'patrolled' ])
     tmp2['total'] = tmp2['unpatrolled'] + tmp2['patrolled']
 
     query = f"""SELECT ?prop ?propertyLabel ?dtype WHERE {{
@@ -532,8 +536,10 @@ def plot_sitelink_by_patrol_status(unpatrolled_changes:pd.DataFrame, sitelinkact
         ax.set_ylabel('project')
 
     ### output to file
-    tmp2 = tmp.drop(labels='rc_id_y', axis=1).unstack(fill_value=0).rename_axis((None,None), axis=1)
-    tmp2.columns = [ 'unpatrolled', 'patrolled' ]
+    tmp2 = tmp.drop(labels='rc_id_y', axis=1).unstack(fill_value=0)
+    if isinstance(tmp2, pd.Series):
+        tmp2 = tmp2.to_frame()
+    tmp2.columns = pd.Index([ 'unpatrolled', 'patrolled' ])
     tmp2['total'] = tmp2['unpatrolled'] + tmp2['patrolled']
 
     tmp2.sort_values(by=['total', 'unpatrolled'], ascending=[False, False], inplace=True)
