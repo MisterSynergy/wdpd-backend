@@ -363,7 +363,11 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
         df = df.astype({ 'is_range_blocked' : 'category' })
         df['actor_name_int'] = df['actor_name'].apply(lambda x : int(ipaddress.ip_address(x)))
         df = df.sort_values(by=['edits', 'actor_name_int'], ascending=[ False, True ])
-        dump_dataframe(df[job['fields']], job['filename'])
+        
+        df_to_dump = df[job['fields']]
+        if isinstance(df_to_dump, pd.Series):
+            df_to_dump = df_to_dump.to_frame()
+        dump_dataframe(df_to_dump, job['filename'])
 
     LOG.info('Dumped anon users with block history')
 
@@ -385,7 +389,7 @@ def dump_highly_used_items(unpatrolled_changes:pd.DataFrame, wdcm_toplist:pd.Dat
         right_on='qid'
     ).value_counts(subset=['rc_title', 'entity_usage_count'], sort=True, ascending=False)
     filename = 'worklist-highly-used-items-{mode}.tsv'
-    dump_dataframe(toplist_unpatrolled_changes.sort_index(level=1, ascending=False), filename)
+    dump_dataframe(toplist_unpatrolled_changes.sort_index(level=1, ascending=False).to_frame(), filename)
 
     LOG.info('Dumped highly used items with edits')
 
@@ -689,7 +693,7 @@ def print_patrol_progress_describe(patrol_progress:pd.DataFrame) -> None:
             delete_file(existing_dump)
 
     for language in languages:
-        filt = (patrol_progress['editsummary-magic-param1']==language)
+        filt:pd.Series = (patrol_progress['editsummary-magic-param1']==language)
         filename = f'progress_by_lang/describe-{language}.tsv'
         with open(DATAPATH + filename, mode='w', encoding='utf8') as file_handle:
             file_handle.write(patrol_progress.loc[filt, 'patrol_delay_seconds'].describe().to_string())
@@ -723,7 +727,7 @@ def make_not_ns0_stats(unpatrolled_changes:pd.DataFrame, translation_pages:list)
         if namespace in [ 'Topic', 'Translations' ]:
             continue
 
-        filt = (unpatrolled_changes['namespace']==namespace) \
+        filt:pd.Series = (unpatrolled_changes['namespace']==namespace) \
             & (unpatrolled_changes['rc_patrolled']==0) \
             & (unpatrolled_changes['rc_this_oldid']!=0) \
             & (~unpatrolled_changes['full_page_title'].isin(translation_pages))

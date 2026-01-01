@@ -3,7 +3,7 @@ from json import JSONDecodeError
 import logging
 from typing import Any, Optional
 
-import mariadb
+import mariadb  # type: ignore
 import pandas as pd
 import requests
 
