@@ -1,7 +1,7 @@
 from glob import glob
 import ipaddress
 import logging
-from typing import Optional
+from typing import Optional, TypedDict
 
 from numpy import mean
 import pandas as pd
@@ -12,6 +12,13 @@ from .helper import delete_file, wdqs_query
 
 
 LOG = logging.getLogger(__name__)
+
+
+class BlockHistoryJob(TypedDict):
+    filename : str
+    subfilt : pd.Series
+    range_column_name : str|None
+    fields : list[str]|None
 
 
 #### functions not for export
@@ -256,23 +263,27 @@ def dump_registered_users_with_block_history(unpatrolled_changes:pd.DataFrame, b
     subfilt_registered = (block_history['user_type']=='registered')
     subfilt_1y = (pd.Timestamp.now() - block_history['time'] < pd.Timedelta('365 days'))
 
-    jobs = [
+    jobs:list[BlockHistoryJob] = [
         {
             'filename' : 'worklist-users-registered-with-block-history-all-{mode}.tsv',
             'subfilt' : subfilt_registered,
+            'range_column_name' : None,
+            'fields' : None,
         },
         {
             'filename' : 'worklist-users-registered-with-block-history-1y-{mode}.tsv',
             'subfilt' : subfilt_registered & subfilt_1y,
+            'range_column_name' : None,
+            'fields' : None,
         }
     ]
 
     for job in jobs:
-        filt = (unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_name'].isin(block_history.loc[job.get('subfilt'), 'user_name']))
+        filt = (unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_name'].isin(block_history.loc[job['subfilt'], 'user_name'].to_list()))
         df = unpatrolled_changes.loc[filt, ['actor_name', 'rc_id']].groupby(by=['actor_name']).count().reset_index().sort_values(by='rc_id', ascending=False).merge(right=block_stats, left_on='actor_name', right_on='user_name', how='inner')
         df = df.merge(right=current_user_blocks[['user_name', 'is_blocked']], how='left', on='user_name')
         df = df.rename(columns={'rc_id' : 'edits', 'time' : 'block_cnt'})
-        dump_dataframe(df[fields].sort_values(by=['edits', 'actor_name'], ascending=[False, True]), job.get('filename', ''))
+        dump_dataframe(df[fields].sort_values(by=['edits', 'actor_name'], ascending=[False, True]), job['filename'])
 
     LOG.info('Dumped registered users with block history')
 
@@ -321,7 +332,7 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
     subfilt_anon = (block_history['user_type'].isin(['ipv4', 'ipv6']))
     subfilt_1y = (pd.Timestamp.now() - block_history['time'] < pd.Timedelta('365 days'))
 
-    jobs = [
+    jobs:list[BlockHistoryJob] = [
         {
             'filename' : 'worklist-users-anon-with-block-history-all-{mode}.tsv',
             'subfilt' : subfilt_anon,
@@ -337,14 +348,14 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
     ]
 
     for job in jobs:
-        filt = (unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_name'].isin(block_history.loc[job.get('subfilt'), 'user_name']))
+        filt = (unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_name'].isin(block_history.loc[job['subfilt'], 'user_name'].to_list()))
         df = unpatrolled_changes.loc[filt, ['actor_name', 'rc_id']].groupby(by=['actor_name']).count().reset_index().sort_values(by='rc_id', ascending=False).merge(right=block_stats, left_on='actor_name', right_on='user_name', how='inner')
         df = df.rename(columns={'rc_id' : 'edits', 'time' : 'block_cnt'})
-        df = df.merge(right=ips.loc[(ips['rc_id']>0) & (ips[job.get('range_column_name', '')]>0)], on='actor_name', how='outer')
+        df = df.merge(right=ips.loc[(ips['rc_id']>0) & (ips[job['range_column_name']]>0)], on='actor_name', how='outer')
         df = df.fillna(0)
-        df = df.astype({ 'edits' : int, 'rc_id' : int, 'block_cnt' : int, job.get('range_column_name', '') : int })
+        df = df.astype({ 'edits' : int, 'rc_id' : int, 'block_cnt' : int, job['range_column_name'] : int })
         df['edits'] = df[['edits', 'rc_id']].max(axis=1)
-        df['total_blocks'] = df['block_cnt'] + df[job.get('range_column_name', '')]
+        df['total_blocks'] = df['block_cnt'] + df[job['range_column_name']]
         df = df.drop(columns=['rc_id'])
 
         df = df.merge(right=current_user_blocks.loc[current_user_blocks['range_start'].notna() & (current_user_blocks['range_start']==current_user_blocks['range_end']), ['user_name', 'is_blocked']], how='left', on='user_name')
@@ -352,7 +363,7 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
         df = df.astype({ 'is_range_blocked' : 'category' })
         df['actor_name_int'] = df['actor_name'].apply(func=lambda x : int(ipaddress.ip_address(x)))
         df = df.sort_values(by=['edits', 'actor_name_int'], ascending=[ False, True ])
-        dump_dataframe(df[job.get('fields', [])], job.get('filename', ''))
+        dump_dataframe(df[job['fields']], job['filename'])
 
     LOG.info('Dumped anon users with block history')
 
