@@ -109,5 +109,9 @@ def init_directories() -> None:
 
 def df_info(dataframe:pd.DataFrame) -> None:
     LOG.info(dataframe.shape)
-    LOG.info(dataframe.info())
+
+    str_buffer = StringIO()
+    dataframe.info(buf=str_buffer)
+    LOG.info(str_buffer.getvalue())
+
     LOG.info(dataframe.head())
