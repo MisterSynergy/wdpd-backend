@@ -275,7 +275,7 @@ def query_unpatrolled_changes_outside_main_namespace() -> pd.DataFrame:
 
     namespaces = retrieve_namespace_resolver()
     unpatrolled_changes['namespace'] = unpatrolled_changes['rc_namespace'].apply(
-        func=lambda x : namespaces.get(x)  # pylint: disable=unnecessary-lambda
+        lambda x : namespaces.get(x)  # pylint: disable=unnecessary-lambda
     )
 
     LOG.info('Queried unpatrolled changes outside main namespace')
@@ -296,17 +296,17 @@ def query_translation_pages() -> list[str]:
     translation_pages = _query_mediawiki_to_dataframe(sql)
 
     translation_pages['translatable_page'] = translation_pages['page_title'].apply(
-        func=lambda x : '/'.join(x.split('/')[:-2])
+        lambda x : '/'.join(x.split('/')[:-2])
     )
     translation_pages['section'] = translation_pages['page_title'].apply(
-        func=lambda x : x.split('/')[-2]
+        lambda x : x.split('/')[-2]
     )
     translation_pages['lang'] = translation_pages['page_title'].apply(
-        func=lambda x : x.split('/')[-1]
+        lambda x : x.split('/')[-1]
     )
     translation_pages['translation_page'] = translation_pages[['translatable_page', 'lang']].apply(
+        lambda x : f'{x.translatable_page}/{x.lang}',
         axis=1,
-        func=lambda x : f'{x.translatable_page}/{x.lang}'
     )
 
     LOG.info('Queried translation pages')
@@ -335,7 +335,7 @@ def query_block_history() -> pd.DataFrame:
         LOG.warning('ValueError', exception)
 
     block_history['user_name'] = block_history['user_name'].str.replace('_', ' ')
-    block_history['user_type'] = block_history['user_name'].apply(func=_user_type)
+    block_history['user_type'] = block_history['user_name'].apply(_user_type)
     block_history['user_type'] = block_history['user_type'].astype('category')
 
     block_history.drop(labels=['log_timestamp'], axis=1, inplace=True)
@@ -379,7 +379,7 @@ def query_current_blocks() -> pd.DataFrame:
 
     current_blocks = pd.concat(objs=[current_blocks_anon, current_blocks_registered], ignore_index=True)
 
-    current_blocks['is_blocked'] = current_blocks['is_blocked'].apply(func=lambda x : (x if x=='infinity' else 'temporary'))
+    current_blocks['is_blocked'] = current_blocks['is_blocked'].apply(lambda x : (x if x=='infinity' else 'temporary'))
     current_blocks['is_blocked'] = current_blocks['is_blocked'].astype('category')
 
     LOG.info('Queried current user blocks')
@@ -558,7 +558,7 @@ def _amend_edit_summaries(unpatrolled_changes:pd.DataFrame, actions:dict[str, li
 
     unpatrolled_changes['editsummary-magic-action-broad'] = \
         unpatrolled_changes['editsummary-magic-action'].apply(
-            func=_edit_summary_broad_category,
+            _edit_summary_broad_category,
             args=(actions,)
         )
 

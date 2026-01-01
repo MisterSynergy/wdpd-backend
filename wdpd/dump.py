@@ -292,9 +292,9 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
 
     def _get_range_df(block_history:pd.DataFrame) -> pd.DataFrame:
         ranges = block_history.loc[block_history['user_type'].isin(['ipv4range', 'ipv6range']), ['user_name', 'time']]
-        ranges['ip_network'] = ranges['user_name'].apply(func=lambda x : ipaddress.ip_network(x, strict=False))
-        ranges['range_start'] = ranges['ip_network'].apply(func=lambda x : int(x[0]))
-        ranges['range_end'] = ranges['ip_network'].apply(func=lambda x : int(x[-1]))
+        ranges['ip_network'] = ranges['user_name'].apply(lambda x : ipaddress.ip_network(x, strict=False))
+        ranges['range_start'] = ranges['ip_network'].apply(lambda x : int(x[0]))
+        ranges['range_end'] = ranges['ip_network'].apply(lambda x : int(x[-1]))
 
         return ranges
 
@@ -326,8 +326,8 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
     block_stats = block_history.loc[block_history['user_type'].isin(['ipv4', 'ipv6']), ['user_name', 'time']].groupby(by=['user_name']).count().reset_index()
 
     ips = unpatrolled_changes.loc[(unpatrolled_changes['rc_patrolled']==0) & (unpatrolled_changes['actor_user'].isna()), ['actor_name', 'rc_id']].groupby(by=['actor_name']).count().reset_index()
-    ips['range_blocks_all'] = ips['actor_name'].apply(func=_cnt_blocked_range_memberships, args=(ranges, ))
-    ips['range_blocks_1y'] = ips['actor_name'].apply(func=_cnt_blocked_range_memberships, args=(ranges.loc[pd.Timestamp.now() - ranges['time'] < pd.Timedelta('365 days')], ))
+    ips['range_blocks_all'] = ips['actor_name'].apply(_cnt_blocked_range_memberships, args=(ranges, ))
+    ips['range_blocks_1y'] = ips['actor_name'].apply(_cnt_blocked_range_memberships, args=(ranges.loc[pd.Timestamp.now() - ranges['time'] < pd.Timedelta('365 days')], ))
 
     subfilt_anon = (block_history['user_type'].isin(['ipv4', 'ipv6']))
     subfilt_1y = (pd.Timestamp.now() - block_history['time'] < pd.Timedelta('365 days'))
@@ -359,9 +359,9 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
         df = df.drop(columns=['rc_id'])
 
         df = df.merge(right=current_user_blocks.loc[current_user_blocks['range_start'].notna() & (current_user_blocks['range_start']==current_user_blocks['range_end']), ['user_name', 'is_blocked']], how='left', on='user_name')
-        df['is_range_blocked'] = df['actor_name'].apply(func=_is_range_blocked, args=(current_user_blocks.loc[current_user_blocks['range_start']<current_user_blocks['range_end']], ))
+        df['is_range_blocked'] = df['actor_name'].apply(_is_range_blocked, args=(current_user_blocks.loc[current_user_blocks['range_start']<current_user_blocks['range_end']], ))
         df = df.astype({ 'is_range_blocked' : 'category' })
-        df['actor_name_int'] = df['actor_name'].apply(func=lambda x : int(ipaddress.ip_address(x)))
+        df['actor_name_int'] = df['actor_name'].apply(lambda x : int(ipaddress.ip_address(x)))
         df = df.sort_values(by=['edits', 'actor_name_int'], ascending=[ False, True ])
         dump_dataframe(df[job['fields']], job['filename'])
 
@@ -715,8 +715,8 @@ def make_not_ns0_stats(unpatrolled_changes:pd.DataFrame, translation_pages:list)
             delete_file(existing_dump.replace('head.tsv', 'full.tsv'))
 
     unpatrolled_changes['full_page_title'] = unpatrolled_changes[['namespace', 'rc_title']].apply(
+        lambda x : f'{x.namespace}:{x.rc_title}',
         axis=1,
-        func=lambda x : f'{x.namespace}:{x.rc_title}'
     )
 
     for namespace in namespaces:
