@@ -292,9 +292,9 @@ def dump_anon_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_h
 
     def _get_range_df(block_history:pd.DataFrame) -> pd.DataFrame:
         ranges = block_history.loc[block_history['user_type'].isin(['ipv4range', 'ipv6range']), ['user_name', 'time']]
-        ranges['ip_network'] = ranges['user_name'].apply(lambda x : ipaddress.ip_network(x, strict=False))
-        ranges['range_start'] = ranges['ip_network'].apply(lambda x : int(x[0]))
-        ranges['range_end'] = ranges['ip_network'].apply(lambda x : int(x[-1]))
+        ranges['ip_network'] = ranges['user_name'].apply(lambda x : str(ipaddress.ip_network(x, strict=False)))
+        ranges['range_start'] = ranges['ip_network'].apply(lambda x : int(ipaddress.ip_network(x).network_address))
+        ranges['range_end'] = ranges['ip_network'].apply(lambda x : int(ipaddress.ip_network(x).broadcast_address))
 
         return ranges
 
