@@ -379,11 +379,11 @@ def dump_users_with_block_history(unpatrolled_changes:pd.DataFrame, block_histor
     LOG.info('Dumped all users with block history')
 
 
-def dump_highly_used_items(unpatrolled_changes:pd.DataFrame, wdcm_toplist:pd.DataFrame, \
+def dump_highly_used_items(unpatrolled_changes:pd.DataFrame, highly_used_items_toplist:pd.DataFrame, \
                            min_entity_usage_count:int=MIN_ENTITY_USAGE) -> None:
     filt = (unpatrolled_changes['rc_patrolled']==0)
     toplist_unpatrolled_changes = unpatrolled_changes.loc[filt].merge(
-        right=wdcm_toplist.loc[wdcm_toplist['entity_usage_count']>=min_entity_usage_count],
+        right=highly_used_items_toplist.loc[highly_used_items_toplist['entity_usage_count']>=min_entity_usage_count],
         how='inner',
         left_on='rc_title',
         right_on='qid'

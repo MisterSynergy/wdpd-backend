@@ -7,8 +7,7 @@ USER_AGENT:str = f'{default_user_agent()} (Wikidata bot' \
 
 WIKIDATA_API_ENDPOINT:str = 'https://www.wikidata.org/w/api.php'
 WDQS_ENDPOINT:str = 'https://query.wikidata.org/sparql'
-WDCM_TOPLIST_URL:str = 'https://analytics.wikimedia.org/published/datasets/wmde-analytics-' \
-    'engineering/wdcm/etl/wdcm_topItems.csv'
+HIGHLY_USED_ITEMS_URL:str = 'https://tools-static.wmflabs.org/kvasir1/entityusage_topitems.tsv.gz'
 
 DATAPATH:str = f'{expanduser("~")}/data/'
 PLOTPATH:str = f'{expanduser("~")}/plots/'

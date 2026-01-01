@@ -7,7 +7,7 @@ import mariadb  # type: ignore
 import pandas as pd
 import requests
 
-from .config import WIKIDATA_API_ENDPOINT, USER_AGENT, WDCM_TOPLIST_URL, REPLICA_PARAMS
+from .config import WIKIDATA_API_ENDPOINT, USER_AGENT, HIGHLY_USED_ITEMS_URL, REPLICA_PARAMS
 
 
 LOG = logging.getLogger(__name__)
@@ -419,8 +419,10 @@ def retrieve_namespace_resolver() -> dict[int, str]:
 
 
 def retrieve_highly_used_item_list() -> pd.DataFrame:
-    wdcm_toplist = pd.read_csv(
-        WDCM_TOPLIST_URL,
+    highly_used_items_toplist = pd.read_csv(
+        HIGHLY_USED_ITEMS_URL,
+        sep='\t',
+        header=0,
         names=[
             'qid',
             'entity_usage_count'
@@ -429,12 +431,12 @@ def retrieve_highly_used_item_list() -> pd.DataFrame:
             'qid' : 'str',
             'entity_usage_count' : 'float'
         },
-        header=0
+        compression='gzip',
     )
 
     LOG.info('Retrieved highly used item list')
 
-    return wdcm_toplist
+    return highly_used_items_toplist
 
 
 def retrieve_wdrfd_links() -> list[str]:
